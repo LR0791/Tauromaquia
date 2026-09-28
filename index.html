@@ -1129,6 +1129,21 @@
   .chip { padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: bold; cursor: pointer; border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text-mid); transition: all 0.12s; font-family: inherit; }
   .chip.active { background: var(--red-toro); color: #fff; border-color: var(--red-toro); }
   .chip:hover:not(.active) { border-color: var(--gold); background: var(--gold-pale); }
+  .listado-panel { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border-strong); border-radius: 12px; }
+  .listado-condiciones { display: flex; flex-wrap: wrap; gap: 6px; }
+  .listado-condiciones:empty { display: none; }
+  .chip-x { border: none; background: transparent; color: inherit; font: inherit; font-weight: bold; margin-left: 4px; padding: 0 4px; cursor: pointer; }
+  .listado-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .btn-ejecutar { background: var(--red-toro); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; min-height: 44px; font-family: inherit; font-size: 15px; font-weight: bold; cursor: pointer; transition: transform 0.12s, box-shadow 0.2s; }
+  .btn-ejecutar:active { transform: scale(0.97); }
+  .btn-ejecutar.pendiente { box-shadow: 0 0 0 3px var(--gold); }
+  .listado-aviso { font-size: 12px; font-weight: bold; color: #B26A00; }
+  .listado-rapido-grupo { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .listado-rapido-grupo > span { font-size: 12px; color: var(--text-mid); font-weight: bold; min-width: 78px; }
+  .listado-seg { display: inline-flex; flex-wrap: wrap; background: var(--sand-dark); border-radius: 9px; padding: 2px; gap: 2px; }
+  .listado-seg button { border: none; background: transparent; color: var(--text-mid); font-family: inherit; font-size: 12px; font-weight: bold; padding: 6px 12px; min-height: 32px; border-radius: 7px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+  .listado-seg button[aria-pressed="true"] { background: var(--red-toro); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.18); }
+  @media (pointer: coarse) { .listado-seg button { min-height: 44px; padding: 8px 14px; } }
   .btn-generar { width: 100%; background: var(--red-toro); color: #fff; border: none; padding: 11px; border-radius: var(--radius-sm); font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer; margin-top: 6px; }
   .btn-generar:hover { background: var(--red-light); }
   .btn-generar-sec { width: 100%; background: var(--sand-dark); color: var(--text-mid); border: 1px solid var(--border-strong); padding: 8px; border-radius: var(--radius-sm); font-size: 12px; font-family: inherit; cursor: pointer; margin-top: 6px; }
@@ -1150,6 +1165,7 @@
   .asumm { background: var(--gold-pale); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 9px 8px; text-align: center; }
   .asumm .asv { font-size: 20px; font-weight: bold; color: var(--red-toro); }
   .asumm .asl { font-size: 10px; color: var(--text-light); margin-top: 2px; }
+  .asumm .asd { font-size: 10px; font-weight: bold; color: var(--text-mid); margin-top: 3px; overflow-wrap: anywhere; }
   .result-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; gap: 8px; }
   .result-title { font-size: 13px; font-weight: bold; color: var(--text); }
   .view-toggle { display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
@@ -1226,7 +1242,7 @@
 
 <header>
   <div class="header-inner">
-    <div class="logo">🐂 TAUROMAQUIA<span>Base de Datos Taurina</span><span class="credit">Creada por Luis Ruiz</span></div>
+    <div class="logo">🐂 TAUROMAQUIA<span>Base de Datos Taurina</span><span class="credit">Creada por Luis Ruiz · versión 28-09-26</span></div>
     <div class="header-right">
       <button class="btn-nuevo" onclick="openForm()">＋ Nuevo</button>
     </div>
@@ -1371,10 +1387,65 @@ function actualizarBusqueda(tipo) {
    Intl/toLocaleString: en algunos motores 'es-ES' no aplica agrupación de
    miles de forma fiable, así que se hace a mano para que funcione siempre
    igual en cualquier navegador. */
-function fmtMiles(n) {
-  n = Math.round(n || 0);
-  return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+function formatoES(n, minDec = 0, maxDec = minDec) {
+  const v = Number(n);
+  if (n === null || n === undefined || n === '' || !isFinite(v)) return '—';
+  let [ent, dec] = v.toLocaleString('en-US', { minimumFractionDigits:minDec, maximumFractionDigits:maxDec, useGrouping:false }).split('.');
+  const neg = ent.startsWith('-');
+  if (neg) ent = ent.slice(1);
+  ent = ent.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  return (neg && (parseInt(ent.replace(/\./g,'')) || parseInt(dec || 0)) ? '-' : '') + ent + (dec ? ',' + dec : '');
 }
+function fmtMiles(n) { return formatoES(Math.round(n || 0)); }
+/* Festejos que entran en análisis y estadísticas: ya vistos (fecha no futura)
+   y puntuados (nota del festejo o alguna nota de torero/ganadería > 0).
+   Los futuros o sin puntuar solo se usan en "Próximos festejos".
+   Se calcula una vez por ciclo de trabajo síncrono y se descarta después. */
+let _cacheFestejosAnalizables = null;
+function idsFestejosAnalizables() {
+  if (_cacheFestejosAnalizables) return _cacheFestejosAnalizables;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const conNota = new Set();
+  DB.festejos_detalle.forEach(d => {
+    if ((parseFloat(d.Nota_Torero) || 0) > 0 || (parseFloat(d.Valoracion) || 0) > 0) conNota.add(parseInt(d.Id_Festejos));
+  });
+  const ids = new Set();
+  DB.cabecera_festejos.forEach(c => {
+    const f = normalizarFecha(c.Fecha);
+    if (!f || new Date(f.y, f.m-1, f.d) > hoy) return;
+    const id = parseInt(c.Id_Festejos);
+    if ((parseFloat(c.Nota_Festejo) || 0) > 0 || conNota.has(id)) ids.add(id);
+  });
+  _cacheFestejosAnalizables = ids;
+  queueMicrotask(() => { _cacheFestejosAnalizables = null; });
+  return ids;
+}
+function festejoAnalizable(idOrCab) {
+  return idsFestejosAnalizables().has(parseInt(typeof idOrCab === 'object' ? idOrCab.Id_Festejos : idOrCab));
+}
+function actuacionesAnalizables() {
+  const ids = idsFestejosAnalizables();
+  return DB.festejos_detalle.filter(d => ids.has(parseInt(d.Id_Festejos)));
+}
+
+/* Animales lidiados de un conjunto de actuaciones, según el animal de cada
+   actuación (TORO / NOVILLO) en cualquier tipo de festejo: corrida, rejones,
+   mixta, festival… Si la actuación no indica animal, se deduce del tipo. */
+function lidiadosPorAnimal(actuaciones) {
+  let toros = 0, novillos = 0;
+  actuaciones.forEach(d => {
+    let animal = String(d.Tipo || '').toUpperCase();
+    if (animal !== 'TORO' && animal !== 'NOVILLO') {
+      const cab = DB.cabecera_festejos.find(c => parseInt(c.Id_Festejos) === parseInt(d.Id_Festejos));
+      animal = getAnimalDefault(cab ? cab.Festejo : null);
+    }
+    if (animal === 'NOVILLO') novillos += torosDe(d); else toros += torosDe(d);
+  });
+  return { toros, novillos };
+}
+
+/* Toros de una actuación: si no se anotó el número, cuenta 1 (mismo criterio en toda la app) */
+function torosDe(d) { return parseInt(d.Toro) || 1; }
 function getInitials(name) {
   if (!name) return '?';
   return name.split(' ').slice(0,2).map(w=>w[0]||'').join('').toUpperCase().slice(0,2);
@@ -1382,7 +1453,7 @@ function getInitials(name) {
 function fv(val, type='text') {
   if (val === null || val === undefined || val === '') return '<span class="empty">—</span>';
   if (type === 'bool') return val ? '<span class="boolean-yes">✓ Sí</span>' : '<span class="boolean-no">✗ No</span>';
-  if (type === 'currency') return val === 0 ? '<span class="empty">0,00 €</span>' : parseFloat(val).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €';
+  if (type === 'currency') return val === 0 ? '<span class="empty">0,00 €</span>' : formatoES(parseFloat(val), 2) + ' €';
   return val;
 }
 function field(label, val, type='text', full=false) {
@@ -1390,7 +1461,7 @@ function field(label, val, type='text', full=false) {
     type==='bool' ? (val?'field-value boolean-yes':'field-value boolean-no') :
     type==='currency' ? 'field-value number' : 'field-value';
   const display = type==='bool' ? (val?'✓ Sí':'✗ No') :
-    type==='currency' ? parseFloat(val||0).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})+' €' :
+    type==='currency' ? formatoES(parseFloat(val||0), 2)+' €' :
     (val||'—');
   return `<div class="field${full?' field-full':''}"><div class="field-label">${label}</div><div class="${cls}">${display}</div></div>`;
 }
@@ -1432,7 +1503,7 @@ function calcularNotaEstimadaFestejo(cab) {
 }
 
 function contarToreosTorero(toreroId) {
-  const actuaciones = DB.festejos_detalle.filter(d => d.Torero === toreroId);
+  const actuaciones = actuacionesAnalizables().filter(d => d.Torero === toreroId);
 
   const getCab = (id_festejos) => DB.cabecera_festejos.find(c => c.Id_Festejos === id_festejos);
 
@@ -1443,9 +1514,9 @@ function contarToreosTorero(toreroId) {
     if (!cab) return;
     if (cab.Festejo === 1) {
       actCorridasIds.add(d.Id_Festejos);
-      toros += (d.Toro || 1);
-      sumNotaCorr += parseFloat(d.Nota_Torero) || 0;
-      numActCorr++;
+      toros += torosDe(d);
+      const nota = parseFloat(d.Nota_Torero) || 0;
+      if (nota > 0) { sumNotaCorr += nota; numActCorr++; }
     }
   });
   const corridas = actCorridasIds.size;
@@ -1458,9 +1529,9 @@ function contarToreosTorero(toreroId) {
     if (!cab) return;
     if (cab.Festejo === 2 || cab.Festejo === 3) {
       actNovilladasIds.add(d.Id_Festejos);
-      novillos += (d.Toro || 1);
-      sumNotaNov += parseFloat(d.Nota_Torero) || 0;
-      numActNov++;
+      novillos += torosDe(d);
+      const nota = parseFloat(d.Nota_Torero) || 0;
+      if (nota > 0) { sumNotaNov += nota; numActNov++; }
     }
   });
   const novilladas = actNovilladasIds.size;
@@ -1474,7 +1545,7 @@ function contarToreosTorero(toreroId) {
 }
 
 function contarToreosGanaderia(ganaderiaId) {
-  const actuaciones = DB.festejos_detalle.filter(d => d.Ganaderia === ganaderiaId);
+  const actuaciones = actuacionesAnalizables().filter(d => d.Ganaderia === ganaderiaId);
   const getCab = (id_festejos) => DB.cabecera_festejos.find(c => c.Id_Festejos === id_festejos);
 
   const idsCorr = new Set(); let toros = 0, sumValCorr = 0, numActCorr = 0;
@@ -1485,15 +1556,15 @@ function contarToreosGanaderia(ganaderiaId) {
     if (!cab) return;
     if (cab.Festejo === 1) {
       idsCorr.add(d.Id_Festejos);
-      toros     += (d.Toro || 1);
-      sumValCorr += parseFloat(d.Valoracion) || 0;
-      numActCorr++;
+      toros     += torosDe(d);
+      const val = parseFloat(d.Valoracion) || 0;
+      if (val > 0) { sumValCorr += val; numActCorr++; }
     }
     if (cab.Festejo === 2 || cab.Festejo === 3) {
       idsNov.add(d.Id_Festejos);
-      novillos  += (d.Toro || 1);
-      sumValNov  += parseFloat(d.Valoracion) || 0;
-      numActNov++;
+      novillos  += torosDe(d);
+      const val = parseFloat(d.Valoracion) || 0;
+      if (val > 0) { sumValNov += val; numActNov++; }
     }
   });
 
@@ -1514,18 +1585,18 @@ function contarOtrosFestejosPorTipo(tipo, id) {
   const porTipo = {}; // tipoId -> { idsFestejos:Set, lidiados, sumaValoracion, numActuaciones }
 
   if (tipo === 'plaza') {
-    const cabs = DB.cabecera_festejos.filter(c => parseInt(c.Nombre_Plaza)===numId && c.Festejo!==1 && c.Festejo!==2 && c.Festejo!==3);
+    const cabs = DB.cabecera_festejos.filter(c => festejoAnalizable(c) && parseInt(c.Nombre_Plaza)===numId && c.Festejo!==1 && c.Festejo!==2 && c.Festejo!==3);
     cabs.forEach(cab => {
       const tId = cab.Festejo;
       if (!porTipo[tId]) porTipo[tId] = { idsFestejos: new Set(), lidiados: 0, sumaValoracion: 0, numActuaciones: 0 };
       porTipo[tId].idsFestejos.add(cab.Id_Festejos);
       const detalleCab = DB.festejos_detalle.filter(d => d.Id_Festejos === cab.Id_Festejos);
-      porTipo[tId].lidiados += detalleCab.reduce((a,d)=>a+(d.Toro||1),0);
+      porTipo[tId].lidiados += detalleCab.reduce((a,d)=>a+torosDe(d),0);
       const nota = parseFloat(cab.Nota_Festejo)||0;
       if (nota > 0) { porTipo[tId].sumaValoracion += nota; porTipo[tId].numActuaciones++; }
     });
   } else {
-    const detalle = DB.festejos_detalle.filter(d => tipo==='torero' ? parseInt(d.Torero)===numId : parseInt(d.Ganaderia)===numId);
+    const detalle = actuacionesAnalizables().filter(d => tipo==='torero' ? parseInt(d.Torero)===numId : parseInt(d.Ganaderia)===numId);
     const getCab = (idf) => DB.cabecera_festejos.find(c => c.Id_Festejos === idf);
     detalle.forEach(d => {
       const cab = getCab(d.Id_Festejos);
@@ -1534,10 +1605,9 @@ function contarOtrosFestejosPorTipo(tipo, id) {
       const tId = cab.Festejo;
       if (!porTipo[tId]) porTipo[tId] = { idsFestejos: new Set(), lidiados: 0, sumaValoracion: 0, numActuaciones: 0 };
       porTipo[tId].idsFestejos.add(d.Id_Festejos);
-      porTipo[tId].lidiados += (d.Toro || 1);
+      porTipo[tId].lidiados += torosDe(d);
       const val = tipo==='torero' ? (parseFloat(d.Nota_Torero)||0) : (parseFloat(d.Valoracion)||0);
-      porTipo[tId].sumaValoracion += val;
-      porTipo[tId].numActuaciones++;
+      if (val > 0) { porTipo[tId].sumaValoracion += val; porTipo[tId].numActuaciones++; }
     });
   }
 
@@ -1561,7 +1631,9 @@ function showSection(sec) {
     analisisPantalla = 'menu';
     listadoTablaActual = null;
     listadoFiltros = [];
+    listadoRapidos = {};
     listadoRelFiltro = null;
+    listadoPendiente = listadoEstadoVacio();
   }
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.tab')[['festejos','toreros','ganaderias','plazas','ferias','analisis','parametros'].indexOf(sec)].classList.add('active');
@@ -1571,6 +1643,7 @@ function showSection(sec) {
 let _pendingCharts = [];
 
 function render() {
+  _cacheFestejosAnalizables = null;
   _pendingCharts = [];
   const main = document.getElementById('main-content');
 
@@ -1696,7 +1769,7 @@ function displayDate(iso) {
 function calcularMediaPorAnyo(tipo, id) {
   const porAnyo = {};
   if (tipo === 'plaza') {
-    DB.cabecera_festejos.forEach(cab => {
+    DB.cabecera_festejos.filter(festejoAnalizable).forEach(cab => {
       if (parseInt(cab.Nombre_Plaza) !== parseInt(id)) return;
       const nota = parseFloat(cab.Nota_Festejo);
       if (!nota || nota <= 0) return;
@@ -1712,7 +1785,7 @@ function calcularMediaPorAnyo(tipo, id) {
       media: Math.min(10, Math.max(0, porAnyo[a].suma / porAnyo[a].n))
     }));
   }
-  DB.festejos_detalle.forEach(d => {
+  actuacionesAnalizables().forEach(d => {
     const coincide = tipo === 'torero'
       ? parseInt(d.Torero) === parseInt(id)
       : parseInt(d.Ganaderia) === parseInt(id);
@@ -1843,7 +1916,7 @@ function getCategoria(t) {
 /* ─── FESTEJOS ─── */
 function fmtEur(n) {
   const v = parseFloat(n) || 0;
-  return v.toLocaleString('es-ES', { minimumFractionDigits:2, maximumFractionDigits:2 }) + ' €';
+  return formatoES(v, 2) + ' €';
 }
 function renderFestejos() {
   return `
@@ -1867,12 +1940,20 @@ function calcularNumerosFestejos() {
     if (f) conFecha.push({ cab, ts: new Date(f.y, f.m-1, f.d).getTime() });
     else sinFecha.push({ cab });
   });
-  conFecha.sort((a,b) => a.ts - b.ts);
+  const idNum = c => parseInt(c.Id_Festejos) || 0;
+  conFecha.sort((a,b) => (a.ts - b.ts) || (idNum(a.cab) - idNum(b.cab)));
+  sinFecha.sort((a,b) => idNum(a.cab) - idNum(b.cab));
   const mapa = new Map();
   let n = 1;
   conFecha.forEach(({cab}) => mapa.set(cab.Id_Festejos, n++));
   sinFecha.forEach(({cab}) => mapa.set(cab.Id_Festejos, n++));
   return mapa;
+}
+
+/* Orden único de todos los listados de festejos: Nº descendente, es decir,
+   el más reciente arriba y el más antiguo (Nº 1) abajo. */
+function ordenarFestejosRecientesPrimero(cabs, numerosMap = calcularNumerosFestejos()) {
+  return [...cabs].sort((a, b) => (numerosMap.get(b.Id_Festejos) || 0) - (numerosMap.get(a.Id_Festejos) || 0));
 }
 
 function festejosItemsFiltrados() {
@@ -1894,17 +1975,7 @@ function festejosItemsFiltrados() {
       return false;
     });
   }
-  // Siempre ordenados por fecha (los festejos sin fecha van al final), para
-  // que coincida con la numeración Nº de cada tarjeta: si se añade o edita
-  // un festejo con una fecha anterior a los demás, pasa a colocarse antes en
-  // la lista automáticamente y todos los números se recalculan correlativos.
-  items = [...items].sort((a, b) => {
-    const fa = normalizarFecha(a.Fecha), fb = normalizarFecha(b.Fecha);
-    const ta = fa ? new Date(fa.y, fa.m-1, fa.d).getTime() : Infinity;
-    const tb = fb ? new Date(fb.y, fb.m-1, fb.d).getTime() : Infinity;
-    return ta - tb;
-  });
-  return items;
+  return ordenarFestejosRecientesPrimero(items);
 }
 
 function festejosTituloTexto() {
@@ -1927,7 +1998,7 @@ function renderFestejoCard(cab, numerosMap) {
       <div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
         ${ganadIds.map(gId=>{
           const gRows = detalle.filter(d=>d.Ganaderia===gId);
-          const torosG = gRows.reduce((a,d)=>a+(d.Toro||0),0);
+          const torosG = gRows.reduce((a,d)=>a+torosDe(d),0);
           let notaHtml = '';
           if (esFuturo) {
             // Festejo futuro: media histórica de la ganadería, sin estrella, en verde
@@ -1935,7 +2006,8 @@ function renderFestejoCard(cab, numerosMap) {
             const mediaHist = cntG.corridas > 0 ? cntG.mediaToros : (cntG.novilladas > 0 ? cntG.mediaNovillos : null);
             notaHtml = mediaHist!==null ? `<span style="font-size:11px;color:#2E7D32" title="Media histórica de la ganadería">📊${mediaHist.toFixed(1)}</span>` : '';
           } else {
-            const valG = gRows.length>0 ? (gRows.reduce((a,d)=>a+(parseFloat(d.Valoracion)||0),0)/gRows.length).toFixed(1) : null;
+            const valsG = gRows.map(d=>parseFloat(d.Valoracion)||0).filter(v=>v>0);
+            const valG = valsG.length ? (valsG.reduce((a,v)=>a+v,0)/valsG.length).toFixed(1) : null;
             notaHtml = valG ? `<span style="font-size:11px;color:var(--gold)">⭐${valG}</span>` : '';
           }
           const fotoHierro = getGanaderiaFoto(gId,'hierro');
@@ -1960,7 +2032,7 @@ function renderFestejoCard(cab, numerosMap) {
     });
     const toreroRows = [...toreroMap.entries()].map(([key, rows]) => {
       const nombre    = getToreroNombre(rows[0].Torero) || rows[0]._toreroNombre || '—';
-      const toros     = rows.reduce((a,d)=>a+(d.Toro||0),0);
+      const toros     = rows.reduce((a,d)=>a+torosDe(d),0);
       const orejas    = rows.reduce((a,d)=>a+(d.Orejas||0),0);
       const rabos     = rows.reduce((a,d)=>a+(d.Rabos||0),0);
       const puertas   = rows.reduce((a,d)=>a+(d.Puerta_Grande||0),0);
@@ -1972,7 +2044,8 @@ function renderFestejoCard(cab, numerosMap) {
         const mediaHist = cntT.corridas > 0 ? cntT.mediaToros : (cntT.novilladas > 0 ? cntT.mediaNovillos : null);
         notaHtml = mediaHist!==null ? `<span style="font-size:11px;color:#2E7D32" title="Media histórica del torero">📊${mediaHist.toFixed(1)}</span>` : '';
       } else {
-        const notaMedia = rows.reduce((a,d)=>a+(parseFloat(d.Nota_Torero)||0),0) / rows.length;
+        const notasT = rows.map(d=>parseFloat(d.Nota_Torero)||0).filter(v=>v>0);
+        const notaMedia = notasT.length ? notasT.reduce((a,v)=>a+v,0) / notasT.length : 0;
         notaHtml = notaMedia>0 ? `<span style="font-size:11px;color:var(--text-light)">⭐${notaMedia.toFixed(1)}</span>` : '';
       }
       const fotoTorero = rows[0].Torero ? toreroFotos[rows[0].Torero] : null;
@@ -1998,6 +2071,7 @@ function renderFestejoCard(cab, numerosMap) {
         <span class="festejo-fecha">📅 ${fechaEsp(cab.Fecha)}${esFuturo?' <span style="background:#E8F5E9;color:#2E7D32;font-size:10px;padding:2px 6px;border-radius:10px;font-weight:bold;margin-left:4px">PRÓXIMO</span>':''}</span>&nbsp;&nbsp;&nbsp;
         <span class="festejo-tipo">${getTipoNombre(cab.Festejo)}</span>
         <div style="margin-left:auto;display:flex;gap:5px">
+          ${esFechaHoyOFutura(cab.Fecha) ? `<button style="background:rgba(26,111,168,0.1);border:1px solid rgba(26,111,168,0.3);color:#1A6FA8;padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit" onclick="ofrecerAnadirCalendario(${cab.Id_Festejos})" title="Añadir al calendario" aria-label="Añadir al calendario">📅</button>` : ''}
           <button style="background:rgba(139,26,26,0.1);border:1px solid rgba(139,26,26,0.25);color:var(--red-toro);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit" onclick="openEditFestejo(${cab.Id_Festejos})">✏️ Editar</button>
           <button style="background:rgba(139,26,26,0.1);border:1px solid rgba(139,26,26,0.25);color:var(--red-toro);padding:3px 8px;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit" onclick="deleteFestejo(${cab.Id_Festejos})">🗑️</button>
         </div>
@@ -2101,23 +2175,17 @@ function verFestejosDeEntidad(tipo, id, categoria) {
 
   let cabs;
   if (tipo === 'plaza') {
-    cabs = DB.cabecera_festejos.filter(c => parseInt(c.Nombre_Plaza)===numId && matchTipo(c.Festejo));
+    cabs = DB.cabecera_festejos.filter(c => festejoAnalizable(c) && parseInt(c.Nombre_Plaza)===numId && matchTipo(c.Festejo));
   } else {
     const idsFestejos = new Set(
-      DB.festejos_detalle
+      actuacionesAnalizables()
         .filter(d => tipo==='torero' ? parseInt(d.Torero)===numId : parseInt(d.Ganaderia)===numId)
         .map(d => d.Id_Festejos)
     );
     cabs = DB.cabecera_festejos.filter(c => idsFestejos.has(c.Id_Festejos) && matchTipo(c.Festejo));
   }
-  cabs.sort((a,b) => {
-    const fa = normalizarFecha(a.Fecha), fb = normalizarFecha(b.Fecha);
-    const ta = fa ? new Date(fa.y,fa.m-1,fa.d).getTime() : 0;
-    const tb = fb ? new Date(fb.y,fb.m-1,fb.d).getTime() : 0;
-    return tb - ta; // más recientes primero
-  });
-
   const numerosMap = calcularNumerosFestejos();
+  cabs = ordenarFestejosRecientesPrimero(cabs, numerosMap);
   const cardsHtml = cabs.map(cab => renderFestejoCard(cab, numerosMap)).join('');
   const tituloFull = `🐂 ${titulo} de ${nombre}`;
 
@@ -2650,7 +2718,7 @@ function renderPlazas() {
       ${avatarHtml}
       <div class="item-info">
         <div class="item-name">${p.Nombre}</div>
-        <div class="item-sub">${p.Localidad}, ${p.Provincia} · ${p.Categoria} · Aforo: ${p.Aforo.toLocaleString('es-ES')}</div>
+        <div class="item-sub">${p.Localidad}, ${p.Provincia} · ${p.Categoria} · Aforo: ${formatoES(p.Aforo||0)}</div>
       </div>
       <span class="item-badge ${p.Baja?'badge-baja':'badge-activo'}">${p.Baja?'Baja':'Activa'}</span>
       ${enviando?'':'<span class="item-arrow">›</span>'}
@@ -2786,7 +2854,7 @@ function renderPlazas() {
         ${field('Localidad',selectedItem.Localidad)}
         ${field('Provincia',selectedItem.Provincia)}
         ${field('Categoría',selectedItem.Categoria)}
-        ${field('Aforo',selectedItem.Aforo?selectedItem.Aforo.toLocaleString('es-ES'):'')}
+        ${field('Aforo',selectedItem.Aforo?formatoES(selectedItem.Aforo):'')}
         ${field('Baja',selectedItem.Baja,'bool')}
       </div>
       ${selectedItem.Notas?`<div class="field-section-title" style="margin-top:16px">Notas</div><div class="fields-grid single">${field('Notas',selectedItem.Notas)}</div>`:''}
@@ -3407,7 +3475,7 @@ function renderFestejoForm(cab) {
       <div class="form-field">
         <label style="font-weight:bold">Coste del festejo <span style="font-weight:normal;color:var(--text-light);font-size:11px">(calculado)</span></label>
         <div id="ff_coste_display" style="background:var(--gold-pale);border:1px solid var(--border-strong);border-radius:var(--radius-sm);padding:8px 12px;font-weight:bold;font-family:'Courier New',monospace;font-size:16px;color:var(--red-toro);letter-spacing:0.5px">
-          ${(precio+gastos+(cab?cab.Otros_Gastos||0:0)).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2})} €
+          ${formatoES(precio+gastos+(cab?cab.Otros_Gastos||0:0), 2)} €
         </div>
       </div>
     </div>
@@ -3705,7 +3773,7 @@ function calcCoste() {
   const g = parseFloat(document.getElementById('ff_gastos')?.value) || 0;
   const o = parseFloat(document.getElementById('ff_otros')?.value)  || 0;
   const el = document.getElementById('ff_coste_display');
-  if (el) el.textContent = (p + g + o).toLocaleString('es-ES', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' €';
+  if (el) el.textContent = formatoES(p + g + o, 2) + ' €';
 }
 
 function saveFestejo() {
@@ -3730,8 +3798,12 @@ function saveFestejo() {
   const gastos = parseFloat(document.getElementById('ff_gastos')?.value)||0;
   const otros  = parseFloat(document.getElementById('ff_otros')?.value) ||0;
 
+  const previo = festejoEditId ? huellaFestejo(festejoEditId) : null;
+  let idGuardado;
+
   if (festejoEditId) {
     const editId = parseInt(festejoEditId);
+    idGuardado = editId;
     const ci = DB.cabecera_festejos.findIndex(c => parseInt(c.Id_Festejos) === editId);
     if (ci >= 0) {
       DB.cabecera_festejos[ci].Fecha          = fechaGuardar;
@@ -3751,6 +3823,7 @@ function saveFestejo() {
     });
   } else {
     const newId = nextId++;
+    idGuardado = newId;
     DB.cabecera_festejos.push({
       Id_Festejos:    newId,
       Nombre_Plaza:   parseInt(document.getElementById('ff_plaza')?.value),
@@ -3771,6 +3844,192 @@ function saveFestejo() {
   closeFestejo();
   showToast('💾 Festejo guardado');
   render();
+
+  const fechaAntes = previo ? previo.fecha : null;
+  const eraPendiente = !previo || !fechaAntes || esFechaHoyOFutura(fechaAntes);
+  const cambiado = !previo || previo.huella !== huellaFestejo(idGuardado).huella;
+  if (eraPendiente && cambiado && esFechaHoyOFutura(fechaGuardar)) ofrecerAnadirCalendario(idGuardado);
+}
+
+/* ════════════════════════════════════════
+   CALENDARIO – exportación .ics de festejos pendientes
+   ════════════════════════════════════════ */
+function esFechaHoyOFutura(fechaStr) {
+  const f = normalizarFecha(fechaStr);
+  if (!f) return false;
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  return new Date(f.y, f.m-1, f.d) >= hoy;
+}
+
+/* Huella normalizada de cabecera + actuaciones (sin Ids ni campos auxiliares)
+   para saber si al guardar ha cambiado algo. */
+function huellaFestejo(idFestejo) {
+  const id = parseInt(idFestejo);
+  const cab = DB.cabecera_festejos.find(c => parseInt(c.Id_Festejos) === id);
+  const norm = v => (v === undefined || v === null || v === false || v === 0 || v === '0') ? '' : String(v).trim();
+  const limpiar = o => Object.keys(o || {}).filter(k => k !== 'Id' && k !== 'Id_Festejos' && !k.startsWith('_'))
+    .sort().map(k => k + '=' + norm(k === 'Fecha' ? isoDate(o[k]) : o[k])).filter(p => !p.endsWith('=')).join('|');
+  const lineas = DB.festejos_detalle.filter(d => parseInt(d.Id_Festejos) === id).map(limpiar);
+  return { fecha: cab ? cab.Fecha : '', huella: limpiar(cab) + '#' + lineas.join('#') };
+}
+
+function datosCalendarioFestejo(idFestejo) {
+  const id = parseInt(idFestejo);
+  const cab = DB.cabecera_festejos.find(c => parseInt(c.Id_Festejos) === id);
+  if (!cab) return null;
+  const f = normalizarFecha(cab.Fecha);
+  if (!f) return null;
+  const detalle = DB.festejos_detalle.filter(d => parseInt(d.Id_Festejos) === id);
+  const unicos = arr => [...new Set(arr.filter(Boolean))];
+  const tipo       = (getTipoNombre(cab.Festejo) || 'FESTEJO').toUpperCase();
+  const plaza      = DB.plazas.find(p => p.Id_Plaza == cab.Nombre_Plaza);
+  const plazaNom   = (getPlazaNombre(cab.Nombre_Plaza) || '').toUpperCase();
+  const ganaderias = unicos(detalle.map(d => d.Ganaderia ? getGanaderiaNombre(d.Ganaderia) : d._ganaderiaNombre)).map(x => x.toUpperCase());
+  const actuantes  = unicos(detalle.map(d => d.Torero ? getToreroNombre(d.Torero) : d._toreroNombre)).map(x => x.toUpperCase());
+  const feria      = cab.Feria ? (getFeriaNombre(cab.Feria) || '').toUpperCase() : '';
+  const lugar      = [plazaNom, plaza?.Localidad, plaza?.Provincia].filter(Boolean).map(x => String(x).toUpperCase());
+  const notas = [
+    `TIPO DE FESTEJO: ${tipo}`,
+    `GANADERÍA: ${ganaderias.join(', ') || '—'}`,
+    `ACTUANTES: ${actuantes.join(', ') || '—'}`,
+    feria ? `FERIA: ${feria}` : '',
+  ].filter(Boolean).join('\n');
+  return { id, f, titulo: [tipo, plazaNom].filter(Boolean).join(' · '), lugar: [...new Set(lugar)].join(', '), notas };
+}
+
+function generarICSFestejos(ids) {
+  const datos = ids.map(datosCalendarioFestejo).filter(Boolean);
+  if (!datos.length) return null;
+  const pad = n => String(n).padStart(2, '0');
+  const fechaICS = dt => `${dt.getFullYear()}${pad(dt.getMonth()+1)}${pad(dt.getDate())}`;
+  const ahora  = new Date();
+  const stamp  = `${ahora.getUTCFullYear()}${pad(ahora.getUTCMonth()+1)}${pad(ahora.getUTCDate())}T${pad(ahora.getUTCHours())}${pad(ahora.getUTCMinutes())}${pad(ahora.getUTCSeconds())}Z`;
+  const esc = t => String(t).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  const plegar = linea => {
+    const enc = new TextEncoder(); const trozos = []; let actual = '';
+    for (const ch of linea) {
+      if (enc.encode(actual + ch).length > (trozos.length ? 74 : 75)) { trozos.push(actual); actual = ''; }
+      actual += ch;
+    }
+    trozos.push(actual);
+    return trozos.join('\r\n ');
+  };
+  const eventos = datos.flatMap(d => [
+    'BEGIN:VEVENT',
+    `UID:festejo-${d.id}@tauromaquia`,
+    `DTSTAMP:${stamp}`,
+    `SEQUENCE:${Math.floor(ahora.getTime() / 1000)}`,
+    `DTSTART;VALUE=DATE:${fechaICS(new Date(d.f.y, d.f.m-1, d.f.d))}`,
+    `DTEND;VALUE=DATE:${fechaICS(new Date(d.f.y, d.f.m-1, d.f.d + 1))}`,
+    `SUMMARY:${esc(d.titulo)}`,
+    d.lugar ? `LOCATION:${esc(d.lugar)}` : '',
+    `DESCRIPTION:${esc(d.notas)}`,
+    'TRANSP:OPAQUE',
+    'END:VEVENT',
+  ]);
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//TAUROMAQUIA//Festejos//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    ...eventos, 'END:VCALENDAR'].filter(Boolean).map(plegar).join('\r\n') + '\r\n';
+}
+function generarICSFestejo(idFestejo) { return generarICSFestejos([idFestejo]); }
+
+function anadirFestejosACalendario(ids) {
+  const ics = generarICSFestejos(ids);
+  if (!ics) { showToast('Los festejos no tienen fecha'); return; }
+  const esIOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (esIOS) {
+    // Safari iOS abre directamente la hoja "Añadir al Calendario" (con "Añadir todo" si hay varios)
+    window.location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+    return;
+  }
+  descargarBlob(new Blob([ics], { type: 'text/calendar;charset=utf-8' }), ids.length === 1 ? `festejo-${ids[0]}.ics` : `festejos-${ids.length}.ics`);
+  showToast('📅 Abre el archivo .ics para añadirlo al Calendario');
+}
+function anadirFestejoACalendario(idFestejo) { anadirFestejosACalendario([idFestejo]); }
+
+/* Tras importar festejos desde Excel: ofrece añadir al calendario los de fecha
+   de hoy en adelante, todos a la vez, pudiendo desmarcar los que no se quieran. */
+function ofrecerAnadirCalendarioVarios(ids) {
+  const lista = ids.map(datosCalendarioFestejo).filter(Boolean)
+    .sort((a, b) => new Date(a.f.y, a.f.m-1, a.f.d) - new Date(b.f.y, b.f.m-1, b.f.d));
+  if (!lista.length) return;
+  if (lista.length === 1) { ofrecerAnadirCalendario(lista[0].id); return; }
+  document.getElementById('calendario-festejo-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'calendario-festejo-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'cal-modal-titulo');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;max-width:440px;width:100%;max-height:calc(100% - 40px);display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,0.25);overflow:hidden">
+      <div style="background:#1A6FA8;padding:14px 18px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px" aria-hidden="true">📅</span>
+        <span id="cal-modal-titulo" style="color:#fff;font-weight:bold;font-size:15px">Próximos festejos importados · ¿Añadir al calendario?</span>
+      </div>
+      <div class="cal-lista" style="padding:10px 18px;overflow-y:auto;-webkit-overflow-scrolling:touch"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:8px 18px 18px;border-top:1px solid var(--border)">
+        <button type="button" data-accion="si" style="background:#1A6FA8;border:none;color:#fff;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:14px"></button>
+        <button type="button" data-accion="no" style="background:var(--sand-dark);border:1px solid var(--border-strong);color:var(--text-mid);padding:10px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">Ahora no</button>
+      </div>
+    </div>`;
+  const cont = modal.querySelector('.cal-lista');
+  lista.forEach(d => {
+    const label = document.createElement('label');
+    label.style.cssText = 'display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;min-height:44px';
+    label.innerHTML = `<input type="checkbox" checked value="${d.id}" style="width:20px;height:20px;margin-top:2px;flex-shrink:0">
+      <span style="font-size:13px;line-height:1.4;color:var(--text)"><strong></strong><br><span style="color:var(--text-light);font-size:12px"></span></span>`;
+    label.querySelector('strong').textContent = `${fechaEsp(displayDate(`${d.f.y}-${d.f.m}-${d.f.d}`))} · ${d.titulo}`;
+    label.querySelector('span span').textContent = d.notas.split('\n').slice(1, 3).join(' · ');
+    cont.appendChild(label);
+  });
+  const btnSi = modal.querySelector('[data-accion="si"]');
+  const marcados = () => [...cont.querySelectorAll('input:checked')].map(c => parseInt(c.value));
+  const actualizar = () => { const n = marcados().length; btnSi.textContent = `📅 Añadir ${n} al calendario`; btnSi.disabled = n === 0; btnSi.style.opacity = n ? '1' : '0.5'; };
+  cont.addEventListener('change', actualizar);
+  actualizar();
+  const cerrar = () => modal.remove();
+  btnSi.onclick = () => { const ids = marcados(); cerrar(); anadirFestejosACalendario(ids); };
+  modal.querySelector('[data-accion="no"]').onclick = cerrar;
+  modal.onclick = e => { if (e.target === modal) cerrar(); };
+  modal.onkeydown = e => { if (e.key === 'Escape') cerrar(); };
+  document.body.appendChild(modal);
+  btnSi.focus();
+}
+
+function ofrecerAnadirCalendario(idFestejo) {
+  const d = datosCalendarioFestejo(idFestejo);
+  if (!d) return;
+  document.getElementById('calendario-festejo-modal')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'calendario-festejo-modal';
+  modal.setAttribute('role', 'dialog');
+  modal.setAttribute('aria-modal', 'true');
+  modal.setAttribute('aria-labelledby', 'cal-modal-titulo');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;max-width:380px;width:100%;box-shadow:0 8px 40px rgba(0,0,0,0.25);overflow:hidden">
+      <div style="background:#1A6FA8;padding:14px 18px;display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px" aria-hidden="true">📅</span>
+        <span id="cal-modal-titulo" style="color:#fff;font-weight:bold;font-size:15px">¿Añadir al calendario?</span>
+      </div>
+      <div style="padding:16px 18px 8px;font-size:13px;color:var(--text);line-height:1.5">
+        <div style="font-weight:bold;margin-bottom:4px">${d.titulo}</div>
+        <div style="color:var(--text-light);margin-bottom:8px">${fechaEsp(displayDate(`${d.f.y}-${d.f.m}-${d.f.d}`))}${d.lugar ? ' · ' + d.lugar : ''}</div>
+        <div style="white-space:pre-line;font-size:12px;background:var(--sand-dark);border-radius:8px;padding:8px 10px"></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;padding:8px 18px 18px">
+        <button type="button" data-accion="si" style="background:#1A6FA8;border:none;color:#fff;padding:12px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;font-weight:bold;font-size:14px">📅 Añadir al calendario</button>
+        <button type="button" data-accion="no" style="background:var(--sand-dark);border:1px solid var(--border-strong);color:var(--text-mid);padding:10px;min-height:44px;border-radius:8px;cursor:pointer;font-family:inherit;font-size:13px">Ahora no</button>
+      </div>
+    </div>`;
+  modal.querySelector('div[style*="pre-line"]').textContent = d.notas;
+  const cerrar = () => modal.remove();
+  modal.querySelector('[data-accion="si"]').onclick = () => { cerrar(); anadirFestejoACalendario(idFestejo); };
+  modal.querySelector('[data-accion="no"]').onclick = cerrar;
+  modal.onclick = e => { if (e.target === modal) cerrar(); };
+  modal.onkeydown = e => { if (e.key === 'Escape') cerrar(); };
+  document.body.appendChild(modal);
+  modal.querySelector('[data-accion="si"]').focus();
 }
 
 function renderFormFestejo(c) {
@@ -4022,7 +4281,7 @@ function quitarPlazaFoto(plazaId) {
 }
 
 function contarFestejosPlaza(plazaId) {
-  const cabs = DB.cabecera_festejos.filter(c => parseInt(c.Nombre_Plaza) === parseInt(plazaId));
+  const cabs = DB.cabecera_festejos.filter(c => festejoAnalizable(c) && parseInt(c.Nombre_Plaza) === parseInt(plazaId));
   const fmt  = n => Number.isInteger(n) ? n : parseFloat(n).toFixed(2).replace('.',',');
 
   let corridas = 0, toros = 0, sumNotaCorr = 0, countNotaCorr = 0;
@@ -4030,7 +4289,7 @@ function contarFestejosPlaza(plazaId) {
 
   cabs.forEach(cab => {
     const detalle = DB.festejos_detalle.filter(d => parseInt(d.Id_Festejos) === parseInt(cab.Id_Festejos));
-    const torosN  = detalle.reduce((a,d) => a + (d.Toro || 1), 0);
+    const torosN  = detalle.reduce((a,d) => a + torosDe(d), 0);
     const nota    = parseFloat(cab.Nota_Festejo) || 0;
 
     if (cab.Festejo === 1) {
@@ -4809,6 +5068,7 @@ const SCHEMA = {
       });
 
       let nuevos = 0, actualizados = 0, errores = 0;
+      const idsImportados = [];
       festejoMap.forEach(({ fecha, plazaRaw, cabRow, rows: fRows }) => {
         const plaza = findPlaza(plazaRaw);
         if (!plaza) {
@@ -4837,6 +5097,7 @@ const SCHEMA = {
           logFn({ tipo:'nuevo', nombre:`${fecha} – ${plaza.Nombre}`, detalle:`Festejo nuevo. ${fRows.filter(r=>r['ACTUANTE']).length} actuación(es) importadas.` });
         }
 
+        idsImportados.push(idFestejo);
         const animalPorDefecto = getAnimalDefault(tipo?.Id||1);
 
         fRows.forEach(r => {
@@ -4903,7 +5164,7 @@ const SCHEMA = {
         const notaCalc = calcularNotaFestejo(DB.festejos_detalle.filter(d => d.Id_Festejos === idFestejo));
         if (ci2 >= 0 && notaCalc !== null) DB.cabecera_festejos[ci2].Nota_Festejo = notaCalc;
       });
-      return { nuevos, actualizados, errores };
+      return { nuevos, actualizados, errores, idsImportados };
     }
   }
 };
@@ -5149,6 +5410,11 @@ function processImportFile(file) {
         const result = schema.importarFestejos(rows, (entry) => { importLog.push(entry); });
         render();
         mostrarInformeImportacion();
+        const proximos = (result.idsImportados || []).filter(id => {
+          const c = DB.cabecera_festejos.find(x => parseInt(x.Id_Festejos) === parseInt(id));
+          return c && esFechaHoyOFutura(c.Fecha);
+        });
+        if (proximos.length) ofrecerAnadirCalendarioVarios(proximos);
         return;
       }
 
@@ -5463,32 +5729,17 @@ function doExport() {
   } else {
     // PDF via print
     exportToPDF(schema.label, schema.cols || Object.keys(data[0]||{}), data);
-    resultEl.textContent = `✅ PDF generado para imprimir`;
+    resultEl.textContent = `✅ PDF generado: Tauromaquia_${schema.label}.pdf`;
   }
 }
 
 function exportToPDF(titulo, cols, data) {
-  const rows = data.map(r => `<tr>${cols.map(c=>`<td>${r[c]??''}</td>`).join('')}</tr>`).join('');
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-  <title>Tauromaquia – ${titulo}</title>
-  <style>
-    body{font-family:Arial,sans-serif;font-size:10px;margin:20px}
-    h2{color:#8B1A1A;margin-bottom:12px}
-    table{border-collapse:collapse;width:100%}
-    th{background:#8B1A1A;color:#fff;padding:5px 6px;text-align:left;font-size:9px}
-    td{padding:4px 6px;border-bottom:1px solid #ddd}
-    tr:nth-child(even) td{background:#FFF8E7}
-    @media print{body{margin:0}}
-  </style></head><body>
-  <h2>🐂 TAUROMAQUIA — ${titulo}</h2>
-  <p style="font-size:11px;color:#666;margin-bottom:10px">Exportado el ${new Date().toLocaleDateString('es-ES')}</p>
-  <table><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead>
-  <tbody>${rows}</tbody></table>
-  <script>window.onload=()=>window.print()<\/script>
-  </body></html>`;
-  const w = window.open('','_blank');
-  w.document.write(html);
-  w.document.close();
+  const numerica = cols.map(c => data.length > 0 && data.every(r => r[c] === null || r[c] === undefined || r[c] === '' || typeof r[c] === 'number'));
+  descargarPDF({
+    titulo, subtitulo: `${pdfFechaHoy()} · ${formatoES(data.length)} registros`,
+    bloques: [{ tipo:'tabla', cabecera: cols, derecha: numerica,
+      filas: data.map(r => cols.map((c, i) => numerica[i] && r[c] !== '' && r[c] != null ? fmt2(r[c]) : (r[c] ?? ''))) }],
+  }, `Tauromaquia_${titulo}`);
 }
 </script>
 
@@ -5789,6 +6040,7 @@ function mostrarConflictoPaquete() {
    MÓDULO ANÁLISIS
    ════════════════════════════════════════ */
 let analisisChart   = null;
+if (window.Chart) Chart.defaults.locale = 'de-DE';
 let analisisSortCol = -1;
 let analisisSortAsc = true;
 let analisisView    = 'tabla';
@@ -5801,6 +6053,8 @@ let analisisEjeY = '';
 let analisisPantalla   = 'menu';
 let listadoTablaActual = null;   // 'toreros' | 'ganaderias' | 'plazas' | 'ferias' | 'festejos'
 let listadoFiltros     = [];     // [{ col, val, label }]
+let listadoRapidos     = {};     // { grupoId: opcionId } — filtros rápidos (categoría, estado, tipo…)
+let listadoPendiente   = { rapidos:{}, filtros:[], cruce:null }; // lo elegido en el panel, aún sin aplicar
 let listadoRelFiltro   = null;   // { tabla, id, nombre } — cruce con otra tabla
 let listadoOrden       = { col: null, asc: true };
 
@@ -5854,24 +6108,29 @@ function dimensionesDeTabla(tablaId) {
   return AN_DIMENSIONES.filter(d => d.tabla === tablaId);
 }
 
+/* clase: 'suma' (el total es la suma), 'media' (el total es la media de todas
+   las actuaciones) o 'unico' (cuenta cada festejo una sola vez). Las medias de
+   nota solo usan actuaciones valoradas (> 0); las de orejas, festejos celebrados. */
+const mediaDe = (vals) => vals.length ? vals.reduce((a,v)=>a+v,0) / vals.length : null; // null = sin datos → «—»
+const cabsUnicas = rows => [...new Set(rows.map(d=>d.Id_Festejos))].map(id=>DB.cabecera_festejos.find(c=>c.Id_Festejos===id)).filter(Boolean);
 const AN_METRICAS = [
-  { id:'actuaciones',   label:'Actuaciones',           tipo:'numero',  agg: rows => rows.length },
-  { id:'festejos',      label:'Festejos distintos',    tipo:'numero',  agg: rows => new Set(rows.map(d=>d.Id_Festejos)).size },
-  { id:'toros_lid',     label:'Toros lidiados',        tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Toro||0),0) },
-  { id:'orejas',        label:'Total orejas',          tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Orejas||0),0) },
-  { id:'rabos',         label:'Total rabos',           tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Rabos||0),0) },
-  { id:'puertas',       label:'Puertas grandes',       tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Puerta_Grande||0),0) },
-  { id:'vueltas_tor',   label:'Vueltas al ruedo (torero)', tipo:'numero', agg: rows => rows.reduce((a,d)=>a+(d.Vuelta_Ruedo||0),0) },
-  { id:'vueltas_gan',   label:'Vueltas al ruedo (toro)',   tipo:'numero', agg: rows => rows.reduce((a,d)=>a+(d.Vuelta_Ruedo_Toro||0),0) },
-  { id:'indultos',      label:'Indultos',              tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Indulto||0),0) },
-  { id:'heridos',       label:'Heridos',               tipo:'numero',  agg: rows => rows.filter(d=>d.Herido).length },
-  { id:'devueltos',     label:'Toros devueltos',       tipo:'numero',  agg: rows => rows.reduce((a,d)=>a+(d.Devuelto||0),0) },
-  { id:'media_val_tor', label:'Media valoración torero',  tipo:'decimal', agg: rows => rows.length>0 ? rows.reduce((a,d)=>a+(parseFloat(d.Nota_Torero)||0),0)/rows.length : 0 },
-  { id:'media_val_gan', label:'Media valoración ganadería',tipo:'decimal', agg: rows => rows.length>0 ? rows.reduce((a,d)=>a+(parseFloat(d.Valoracion)||0),0)/rows.length : 0 },
-  { id:'media_orejas',  label:'Media orejas/actuación', tipo:'decimal', agg: rows => rows.length>0 ? rows.reduce((a,d)=>a+(d.Orejas||0),0)/rows.length : 0 },
-  { id:'precio_medio',  label:'Precio entrada medio',  tipo:'decimal', agg: rows => { const ids=new Set(rows.map(d=>d.Id_Festejos)); const cabs=[...ids].map(id=>DB.cabecera_festejos.find(c=>c.Id_Festejos===id)).filter(Boolean); return cabs.length?cabs.reduce((a,c)=>a+(c.Precio_Entrada||0),0)/cabs.length:0; } },
-  { id:'coste_total',   label:'Coste total festejos',  tipo:'decimal', agg: rows => { const ids=new Set(rows.map(d=>d.Id_Festejos)); return [...ids].reduce((a,id)=>{ const c=DB.cabecera_festejos.find(x=>x.Id_Festejos===id); return a+(c?c.Coste_Festejo||0:0); },0); } },
-  { id:'nota_media',    label:'Nota media festejo',    tipo:'decimal', agg: rows => { const ids=new Set(rows.map(d=>d.Id_Festejos)); const cabs=[...ids].map(id=>DB.cabecera_festejos.find(c=>c.Id_Festejos===id)).filter(c=>c&&c.Nota_Festejo>0); return cabs.length?cabs.reduce((a,c)=>a+c.Nota_Festejo,0)/cabs.length:0; } },
+  { id:'actuaciones',   label:'Actuaciones',               tipo:'numero',  clase:'suma',  agg: rows => rows.length },
+  { id:'festejos',      label:'Festejos distintos',        tipo:'numero',  clase:'unico', agg: rows => new Set(rows.map(d=>d.Id_Festejos)).size },
+  { id:'toros_lid',     label:'Toros lidiados',            tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+torosDe(d),0) },
+  { id:'orejas',        label:'Total orejas',              tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Orejas||0),0) },
+  { id:'rabos',         label:'Total rabos',               tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Rabos||0),0) },
+  { id:'puertas',       label:'Puertas grandes',           tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Puerta_Grande||0),0) },
+  { id:'vueltas_tor',   label:'Vueltas al ruedo (torero)', tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Vuelta_Ruedo||0),0) },
+  { id:'vueltas_gan',   label:'Vueltas al ruedo (toro)',   tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Vuelta_Ruedo_Toro||0),0) },
+  { id:'indultos',      label:'Indultos',                  tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Indulto||0),0) },
+  { id:'heridos',       label:'Heridos',                   tipo:'numero',  clase:'suma',  agg: rows => rows.filter(d=>d.Herido).length },
+  { id:'devueltos',     label:'Toros devueltos',           tipo:'numero',  clase:'suma',  agg: rows => rows.reduce((a,d)=>a+(d.Devuelto||0),0) },
+  { id:'media_val_tor', label:'Media valoración torero',   tipo:'decimal', clase:'media', agg: rows => mediaDe(rows.map(d=>parseFloat(d.Nota_Torero)||0).filter(v=>v>0)) },
+  { id:'media_val_gan', label:'Media valoración ganadería',tipo:'decimal', clase:'media', agg: rows => mediaDe(rows.map(d=>parseFloat(d.Valoracion)||0).filter(v=>v>0)) },
+  { id:'media_orejas',  label:'Media orejas/actuación',    tipo:'decimal', clase:'media', agg: rows => mediaDe(rows.map(d=>d.Orejas||0)) },
+  { id:'precio_medio',  label:'Precio entrada medio',      tipo:'decimal', clase:'media', eur:true, agg: rows => mediaDe(cabsUnicas(rows).map(c=>c.Precio_Entrada||0)) },
+  { id:'coste_total',   label:'Coste total festejos',      tipo:'decimal', clase:'unico', eur:true, agg: rows => cabsUnicas(rows).reduce((a,c)=>a+(c.Coste_Festejo||0),0) },
+  { id:'nota_media',    label:'Nota media festejo',        tipo:'decimal', clase:'media', agg: rows => mediaDe(cabsUnicas(rows).map(c=>parseFloat(c.Nota_Festejo)||0).filter(v=>v>0)) },
 ];
 
 // Análisis state
@@ -5879,7 +6138,7 @@ let anDim1 = 'torero';      // Dimensión principal (filas)
 let anDim2 = '';             // Dimensión secundaria (opcional, columnas cruzadas)
 let anMetricas = ['actuaciones','orejas','media_val_tor']; // Métricas seleccionadas
 let anFiltros  = [{ dim:'', op:'contiene', val:'' }]; // Filtros activos
-let anOrden    = { col:0, asc:false };
+let anOrden    = { col:1, asc:false }; // col 0 = nombre; col 1.. = métricas
 let anTopN     = 0; // 0 = todos
 let anAniosSeleccionados = null; // null = sin restricción (todos); si no, Set de años (string) elegidos
 let anAnioDropdownAbierto = false;
@@ -5888,7 +6147,7 @@ let anAnioDropdownAbierto = false;
 function obtenerAniosDisponibles() {
   const anyoDim = AN_DIMENSIONES.find(d => d.id === 'año');
   const anyos = new Set();
-  DB.festejos_detalle.forEach(d => {
+  actuacionesAnalizables().forEach(d => {
     const a = anyoDim.get(d);
     if (a && a !== '—') anyos.add(a);
   });
@@ -6027,7 +6286,7 @@ const LISTADO_TABLAS = {
       {key:'localidad', label:'Localidad'},
       {key:'provincia', label:'Provincia'},
       {key:'pais',      label:'País'},
-      {key:'edad',      label:'Edad', numeric:true},
+      {key:'edad',      label:'Edad', numeric:true, total:'media'},
       {key:'toros',     label:'Toros lidiados', numeric:true},
       {key:'novillos',  label:'Novillos lidiados', numeric:true},
       {key:'festejos',  label:'Festejos', numeric:true},
@@ -6036,17 +6295,30 @@ const LISTADO_TABLAS = {
     getRows: () => DB.toreros.map(t => {
       const cat = getCategoria(t);
       const cnt = contarToreosTorero(t.Id);
-      const orejasTot = DB.festejos_detalle.filter(d=>parseInt(d.Torero)===t.Id).reduce((a,d)=>a+(d.Orejas||0),0);
+      const orejasTot = actuacionesAnalizables().filter(d=>parseInt(d.Torero)===t.Id).reduce((a,d)=>a+(d.Orejas||0),0);
       return {
         _id: t.Id,
         nombre: t.Nombre_Artistico||'—', categoria: cat.label,
         estado: t.Baja?'Baja':(t.Fecha_Retirada?'Retirado':'Activo'),
         localidad: t.Localidad||'—', provincia: t.Provincia||'—', pais: t.Pais||'—',
-        edad: calcularEdad(t.Fecha_Nacimiento, t.Baja, t.Fecha_Retirada) ?? 0,
-        toros: cnt.toros, novillos: cnt.novillos, festejos: cnt.actuaciones, orejas: orejasTot,
+        edad: calcularEdad(t.Fecha_Nacimiento, t.Baja, t.Fecha_Retirada) ?? null,
+        ...lidiadosPorAnimal(actuacionesAnalizables().filter(d => parseInt(d.Torero) === t.Id)),
+        festejos: cnt.actuaciones, orejas: orejasTot,
       };
     }),
     getNombres: () => DB.toreros.map(t=>({id:t.Id, nombre:t.Nombre_Artistico})).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')),
+    rapidos: () => [
+      { id:'categoria', label:'Categoría', opciones:[
+        { id:'matador',    label:'Matadores',    test:r=>r.categoria==='Matador' },
+        { id:'novillero',  label:'Novilleros',   test:r=>r.categoria==='Novillero' },
+        { id:'rejoneador', label:'Rejoneadores', test:r=>r.categoria==='Rejoneador' },
+      ]},
+      { id:'estado', label:'Estado', opciones:[
+        { id:'activo',   label:'En activo', test:r=>r.estado==='Activo' },
+        { id:'baja',     label:'De baja',   test:r=>r.estado==='Baja' },
+        { id:'retirado', label:'Retirados', test:r=>r.estado==='Retirado' },
+      ]},
+    ],
   },
   ganaderias: {
     label: 'Ganaderías', icon: '🐄',
@@ -6062,20 +6334,26 @@ const LISTADO_TABLAS = {
       {key:'toros',       label:'Toros lidiados', numeric:true},
       {key:'novillos',    label:'Novillos lidiados', numeric:true},
       {key:'festejos',    label:'Festejos', numeric:true},
-      {key:'valoracion',  label:'Valoración media', numeric:true},
+      {key:'valoracion',  label:'Valoración media', numeric:true, total:'media',
+       // Media total sobre las actuaciones de las ganaderías listadas, no media de medias
+       totalAgg: rows => { const ids = new Set(rows.map(r => parseInt(r._id)));
+         const v = actuacionesAnalizables().filter(d => ids.has(parseInt(d.Ganaderia))).map(d => parseFloat(d.Valoracion) || 0).filter(x => x > 0);
+         return v.length ? v.reduce((a,x)=>a+x,0) / v.length : null; } },
     ],
     getRows: () => DB.ganaderias.map(g=>{
       const cnt = contarToreosGanaderia(g.Id);
-      const vals = DB.festejos_detalle.filter(d=>parseInt(d.Ganaderia)===g.Id)
+      const vals = actuacionesAnalizables().filter(d=>parseInt(d.Ganaderia)===g.Id)
         .map(d=>parseFloat(d.Valoracion)||0).filter(v=>v>0);
       const valoracion = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
       return {
         _id:g.Id, nombre:g.Ganaderia||'—', casta:g.Casta||'—', linea:g.Linea||'—', encaste:g.Encaste||'—',
         procedencia:g.Procedencia||'—', estado: g.Baja?'Baja':'Activa', poblacion:g.Poblacion||'—', provincia:g.Provincia||'—',
-        toros:cnt.toros, novillos:cnt.novillos, festejos:cnt.actuaciones, valoracion,
+        ...lidiadosPorAnimal(actuacionesAnalizables().filter(d => parseInt(d.Ganaderia) === g.Id)),
+        festejos:cnt.actuaciones, valoracion: valoracion || null,
       };
     }),
     getNombres: () => DB.ganaderias.map(g=>({id:g.Id, nombre:g.Ganaderia})).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')),
+    rapidos: () => [ grupoEstadoListado() ],
   },
   plazas: {
     label:'Plazas', icon:'🏟️',
@@ -6098,6 +6376,7 @@ const LISTADO_TABLAS = {
       };
     }),
     getNombres: () => DB.plazas.map(p=>({id:p.Id_Plaza, nombre:p.Nombre})).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')),
+    rapidos: () => [ grupoEstadoListado() ],
   },
   ferias: {
     label:'Ferias', icon:'🎪',
@@ -6110,10 +6389,11 @@ const LISTADO_TABLAS = {
       {key:'festejos',   label:'Festejos', numeric:true},
     ],
     getRows: () => DB.ferias.map(f=>{
-      const nFestejos = DB.cabecera_festejos.filter(c=>parseInt(c.Feria)===parseInt(f.Id)).length;
+      const nFestejos = DB.cabecera_festejos.filter(c=>festejoAnalizable(c) && parseInt(c.Feria)===parseInt(f.Id)).length;
       return { _id:f.Id, nombre:f.Feria||'—', localidad:f.Localidad||'—', mesInicio:f.Mes_Inicio||'—', mesFinal:f.Mes_Final||'—', estado:f.Baja?'Baja':'Activa', festejos:nFestejos };
     }),
     getNombres: () => DB.ferias.map(f=>({id:f.Id, nombre:f.Feria})).sort((a,b)=>(a.nombre||'').localeCompare(b.nombre||'','es')),
+    rapidos: () => [ grupoEstadoListado() ],
   },
   festejos: {
     label:'Festejos', icon:'📅',
@@ -6128,10 +6408,10 @@ const LISTADO_TABLAS = {
       {key:'toros',        label:'Lidiados', numeric:true},
       {key:'orejas',       label:'Orejas', numeric:true},
       {key:'rabos',        label:'Rabos', numeric:true},
-      {key:'notaTorero',   label:'Nota torero', numeric:true},
-      {key:'valGanaderia', label:'Val. ganadería', numeric:true},
+      {key:'notaTorero',   label:'Nota torero', numeric:true, total:'media'},
+      {key:'valGanaderia', label:'Val. ganadería', numeric:true, total:'media'},
     ],
-    getRows: () => DB.festejos_detalle.map(d=>{
+    getRows: () => actuacionesAnalizables().map(d=>{
       const cab = DB.cabecera_festejos.find(c=>c.Id_Festejos===d.Id_Festejos);
       return {
         _id: d.Id, _idFestejos: d.Id_Festejos,
@@ -6140,13 +6420,77 @@ const LISTADO_TABLAS = {
         feria: cab ? getFeriaNombre(cab.Feria) : '—',
         tipo: cab ? getTipoNombre(cab.Festejo) : '—',
         torero: getToreroNombre(d.Torero), ganaderia: getGanaderiaNombre(d.Ganaderia),
-        animal: d.Tipo||'—', toros: d.Toro||0, orejas: d.Orejas||0, rabos: d.Rabos||0,
+        animal: d.Tipo||'—', toros: torosDe(d), orejas: d.Orejas||0, rabos: d.Rabos||0,
         notaTorero: parseFloat(d.Nota_Torero)||0, valGanaderia: parseFloat(d.Valoracion)||0,
+        _tipoId: cab ? parseInt(cab.Festejo) : null,
       };
     }),
     getNombres: () => [],
+    rapidos: () => [
+      { id:'tipo', label:'Tipo', opciones: DB.tipos
+          .filter(t => DB.cabecera_festejos.some(c => festejoAnalizable(c) && parseInt(c.Festejo) === parseInt(t.Id)))
+          .map(t => ({ id:String(t.Id), label:t.Tipo_Festejo, test:r=>r._tipoId===parseInt(t.Id) })) },
+    ].filter(g => g.opciones.length > 0),
   },
 };
+
+/* Grupo "Estado" común a ganaderías, plazas y ferias */
+function grupoEstadoListado() {
+  return { id:'estado', label:'Estado', opciones:[
+    { id:'activa', label:'Activas', test:r=>r.estado==='Activa' },
+    { id:'baja',   label:'De baja', test:r=>r.estado==='Baja' },
+  ]};
+}
+
+function listadoGruposRapidos() {
+  const cfg = LISTADO_TABLAS[listadoTablaActual];
+  return cfg && cfg.rapidos ? cfg.rapidos() : [];
+}
+
+function listadoAplicarRapidos(rows, rapidos) {
+  listadoGruposRapidos().forEach(g => {
+    const op = g.opciones.find(o => o.id === rapidos[g.id]);
+    if (op) rows = rows.filter(op.test);
+  });
+  return rows;
+}
+
+function listadoDescripcionRapidos(rapidos = listadoRapidos) {
+  return listadoGruposRapidos()
+    .map(g => g.opciones.find(o => o.id === rapidos[g.id]))
+    .filter(Boolean).map(o => o.label);
+}
+
+/* ─── Estado pendiente: lo que se va eligiendo en el panel. Solo pasa a la
+   tabla (listadoRapidos / listadoFiltros / listadoRelFiltro) al pulsar Filtrar. ─── */
+function listadoEstadoVacio() { return { rapidos:{}, filtros:[], cruce:null }; }
+function listadoCopiaEstado(e) {
+  return { rapidos:{...e.rapidos}, filtros:e.filtros.map(f=>({...f})), cruce:e.cruce?{...e.cruce}:null };
+}
+function listadoEstadoAplicado() {
+  return listadoCopiaEstado({ rapidos:listadoRapidos, filtros:listadoFiltros, cruce:listadoRelFiltro });
+}
+
+function listadoSetRapido(grupo, opcion) {
+  if (opcion) listadoPendiente.rapidos[grupo] = opcion; else delete listadoPendiente.rapidos[grupo];
+  document.querySelectorAll(`.listado-seg[data-grupo="${grupo}"] button`)
+    .forEach(b => b.setAttribute('aria-pressed', String(b.dataset.opcion === (opcion || ''))));
+  listadoMarcarPendiente();
+}
+
+function renderListadoRapidos() {
+  const grupos = listadoGruposRapidos();
+  if (!grupos.length) return '';
+  const boton = (grupo, id, label) => {
+    const activo = (listadoPendiente.rapidos[grupo] || '') === id;
+    return `<button type="button" data-opcion="${id}" aria-pressed="${activo}" onclick="listadoSetRapido('${grupo}','${id}')">${escAttr(label)}</button>`;
+  };
+  return grupos.map(g => `
+    <div class="listado-rapido-grupo" role="group" aria-label="${escAttr(g.label)}">
+      <span>${escAttr(g.label)}:</span>
+      <div class="listado-seg" data-grupo="${g.id}">${boton(g.id, '', 'Todos')}${g.opciones.map(o => boton(g.id, o.id, o.label)).join('')}</div>
+    </div>`).join('');
+}
 
 /* Calcula, para un cruce "tablaBase relacionada con tablaObjetivo=idObjetivo",
    el conjunto de _id de tablaBase que comparten algún festejo con ese registro. */
@@ -6154,7 +6498,7 @@ function listadoCalcularRelacion(tablaBase, tablaObjetivo, idObjetivo) {
   const numId = parseInt(idObjetivo);
   const ids = new Set();
   if (tablaBase === 'festejos') {
-    DB.festejos_detalle.forEach(d => {
+    actuacionesAnalizables().forEach(d => {
       const cab = DB.cabecera_festejos.find(c=>c.Id_Festejos===d.Id_Festejos);
       if (!cab) return;
       let coincide = false;
@@ -6166,7 +6510,7 @@ function listadoCalcularRelacion(tablaBase, tablaObjetivo, idObjetivo) {
     });
     return ids;
   }
-  DB.festejos_detalle.forEach(d => {
+  actuacionesAnalizables().forEach(d => {
     const cab = DB.cabecera_festejos.find(c=>c.Id_Festejos===d.Id_Festejos);
     if (!cab) return;
     const coincideObjetivo =
@@ -6186,77 +6530,94 @@ function listadoCalcularRelacion(tablaBase, tablaObjetivo, idObjetivo) {
 function abrirListado(tabla) {
   listadoTablaActual = tabla;
   listadoFiltros = [];
+  listadoRapidos = {};
   listadoRelFiltro = null;
+  listadoPendiente = listadoEstadoVacio();
   listadoOrden = { col:null, asc:true };
   render();
 }
 
-function listadoAgregarFiltro(col, val, labelCol) {
-  if (listadoFiltros.some(f=>f.tipo==='valor' && f.col===col && String(f.val).toLowerCase()===String(val).toLowerCase())) return;
-  listadoFiltros.push({ tipo:'valor', col, val, label: `${labelCol}: ${val}` });
-  render();
-}
-function listadoAgregarFiltroRango(col, labelCol, min, max) {
-  min = min===''||min===undefined ? null : parseFloat(min);
-  max = max===''||max===undefined ? null : parseFloat(max);
-  if (min===null && max===null) return;
-  const label = min!==null && max!==null ? `${labelCol}: ${fmt2(min)} – ${fmt2(max)}`
-    : min!==null ? `${labelCol}: ≥ ${fmt2(min)}` : `${labelCol}: ≤ ${fmt2(max)}`;
-  listadoFiltros.push({ tipo:'rango', col, min, max, label });
-  render();
-}
-function listadoQuitarFiltro(i) { listadoFiltros.splice(i,1); render(); }
-
-/* Valores distintos que aparece un campo (sin filtrar aún), para poder
-   elegirlos de una lista en vez de tener que encontrar antes una fila que
-   ya los muestre. */
+/* Valores distintos de un campo dentro de lo ya elegido en los filtros rápidos,
+   para que la lista (p. ej. Provincia) solo ofrezca valores con resultados. */
 function listadoValoresDistintos(col) {
   const cfg = LISTADO_TABLAS[listadoTablaActual];
   const set = new Set();
-  cfg.getRows().forEach(r => { const v = r[col]; if (v!==null && v!==undefined && v!=='') set.add(String(v)); });
+  listadoAplicarRapidos(cfg.getRows(), listadoPendiente.rapidos)
+    .forEach(r => { const v = r[col]; if (v!==null && v!==undefined && v!=='' && v!=='—') set.add(String(v)); });
   return [...set].sort((a,b)=>a.localeCompare(b,'es'));
 }
 
 function listadoActualizarConstructor(col) {
   const cont = document.getElementById('listado-constructor-valor');
   if (!cont) return;
-  if (!col) { cont.innerHTML = ''; return; }
   const cfg = LISTADO_TABLAS[listadoTablaActual];
-  const colCfg = cfg.cols.find(c=>c.key===col);
-  if (!colCfg) { cont.innerHTML = ''; return; }
-  if (colCfg.numeric) {
-    cont.innerHTML = `
-      <input type="number" id="listado-rango-min" placeholder="Mín." step="0.01" style="width:80px;border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px">
+  const colCfg = col && cfg.cols.find(c=>c.key===col);
+  if (!colCfg) { cont.innerHTML = ''; listadoMarcarPendiente(); return; }
+  const estilo = 'border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;min-height:36px';
+  const enter = `onkeydown="if(event.key==='Enter')listadoEjecutar()"`;
+  cont.innerHTML = colCfg.numeric ? `
+      <input type="number" id="listado-rango-min" placeholder="Mín." step="0.01" aria-label="Mínimo" style="width:84px;${estilo}" oninput="listadoMarcarPendiente()" ${enter}>
       <span style="font-size:12px;color:var(--text-light)">–</span>
-      <input type="number" id="listado-rango-max" placeholder="Máx." step="0.01" style="width:80px;border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px">
-      <button class="btn-filter" onclick="listadoAnadirDesdeConstructor()">＋ Añadir</button>`;
-  } else {
-    const valores = listadoValoresDistintos(col);
-    cont.innerHTML = `
-      <select id="listado-valor-select" style="border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;max-width:220px">
+      <input type="number" id="listado-rango-max" placeholder="Máx." step="0.01" aria-label="Máximo" style="width:84px;${estilo}" oninput="listadoMarcarPendiente()" ${enter}>`
+    : `
+      <select id="listado-valor-select" aria-label="Valor" style="${estilo};max-width:220px" onchange="listadoMarcarPendiente()">
         <option value="">— Elegir valor —</option>
-        ${valores.map(v=>`<option value="${escAttr(v)}">${escAttr(v)}</option>`).join('')}
-      </select>
-      <button class="btn-filter" onclick="listadoAnadirDesdeConstructor()">＋ Añadir</button>`;
-  }
+        ${listadoValoresDistintos(col).map(v=>`<option value="${escAttr(v)}">${escAttr(v)}</option>`).join('')}
+      </select>`;
+  listadoMarcarPendiente();
 }
-function listadoAnadirDesdeConstructor() {
-  const colSel = document.getElementById('listado-campo-select');
-  const col = colSel && colSel.value;
-  if (!col) return;
-  const cfg = LISTADO_TABLAS[listadoTablaActual];
-  const colCfg = cfg.cols.find(c=>c.key===col);
+
+/* Condición que hay escrita en el constructor (aunque no se haya pulsado
+   "Añadir otra"), o null si está incompleta. */
+function listadoLeerConstructor() {
+  const col = document.getElementById('listado-campo-select')?.value;
+  if (!col) return null;
+  const colCfg = LISTADO_TABLAS[listadoTablaActual].cols.find(c=>c.key===col);
+  if (!colCfg) return null;
   if (colCfg.numeric) {
-    const min = document.getElementById('listado-rango-min')?.value;
-    const max = document.getElementById('listado-rango-max')?.value;
-    listadoAgregarFiltroRango(col, colCfg.label, min, max);
-  } else {
-    const val = document.getElementById('listado-valor-select')?.value;
-    if (!val) return;
-    listadoAgregarFiltro(col, val, colCfg.label);
+    const leer = id => { const v = document.getElementById(id)?.value; return v===''||v===undefined ? null : parseFloat(v); };
+    const min = leer('listado-rango-min'), max = leer('listado-rango-max');
+    if (min===null && max===null) return null;
+    const label = min!==null && max!==null ? `${colCfg.label}: ${fmt2(min)} – ${fmt2(max)}`
+      : min!==null ? `${colCfg.label}: ≥ ${fmt2(min)}` : `${colCfg.label}: ≤ ${fmt2(max)}`;
+    return { tipo:'rango', col, min, max, label };
   }
-  colSel.value = '';
-  document.getElementById('listado-constructor-valor').innerHTML = '';
+  const val = document.getElementById('listado-valor-select')?.value;
+  return val ? { tipo:'valor', col, val, label:`${colCfg.label}: ${val}` } : null;
+}
+
+function listadoFiltroRepetido(lista, f) {
+  return lista.some(x => x.tipo===f.tipo && x.col===f.col &&
+    (f.tipo==='rango' ? x.min===f.min && x.max===f.max : String(x.val).toLowerCase()===String(f.val).toLowerCase()));
+}
+
+function listadoLimpiarConstructor() {
+  const sel = document.getElementById('listado-campo-select');
+  if (sel) sel.value = '';
+  const cont = document.getElementById('listado-constructor-valor');
+  if (cont) cont.innerHTML = '';
+}
+
+function listadoAnadirDesdeConstructor() {
+  const f = listadoLeerConstructor();
+  if (!f) { showToast('Elige un campo y un valor'); return; }
+  if (!listadoFiltroRepetido(listadoPendiente.filtros, f)) listadoPendiente.filtros.push(f);
+  listadoLimpiarConstructor();
+  listadoPintarCondiciones();
+  listadoMarcarPendiente();
+}
+
+function listadoQuitarCondicion(i) {
+  listadoPendiente.filtros.splice(i, 1);
+  listadoPintarCondiciones();
+  listadoMarcarPendiente();
+}
+
+function listadoPintarCondiciones() {
+  const cont = document.getElementById('listado-condiciones');
+  if (!cont) return;
+  cont.innerHTML = listadoPendiente.filtros.map((f,i) =>
+    `<span class="chip active" style="cursor:default">${escAttr(f.label)} <button type="button" class="chip-x" aria-label="Quitar ${escAttr(f.label)}" onclick="listadoQuitarCondicion(${i})">✕</button></span>`).join('');
 }
 
 function listadoOrdenarPor(key) {
@@ -6265,49 +6626,83 @@ function listadoOrdenarPor(key) {
   render();
 }
 
+function listadoOpcionesCruce(tabla, idSel) {
+  return `<option value="">— Elegir ${LISTADO_TABLAS[tabla].label.toLowerCase()} —</option>` +
+    LISTADO_TABLAS[tabla].getNombres().map(n =>
+      `<option value="${n.id}" ${parseInt(n.id)===idSel?'selected':''}>${escAttr(n.nombre||'')}</option>`).join('');
+}
+
 function listadoActualizarValoresCruce(tabla) {
   const sel = document.getElementById('listado-cruce-valor');
-  if (!sel) return;
-  if (!tabla) { sel.style.display='none'; sel.innerHTML=''; return; }
-  const nombres = LISTADO_TABLAS[tabla].getNombres();
-  sel.innerHTML = `<option value="">— Elegir ${LISTADO_TABLAS[tabla].label.toLowerCase()} —</option>` +
-    nombres.map(n=>`<option value="${n.id}">${(n.nombre||'').replace(/</g,'&lt;')}</option>`).join('');
-  sel.dataset.tabla = tabla;
-  sel.style.display = 'inline-block';
+  listadoPendiente.cruce = null;
+  if (sel) {
+    sel.innerHTML = tabla ? listadoOpcionesCruce(tabla, null) : '';
+    sel.dataset.tabla = tabla || '';
+    sel.style.display = tabla ? 'inline-block' : 'none';
+  }
+  listadoMarcarPendiente();
 }
-function listadoAplicarCruceDesdeSelect(idStr) {
+
+function listadoElegirCruce(idStr) {
   const sel = document.getElementById('listado-cruce-valor');
   const tabla = sel && sel.dataset.tabla;
-  if (!idStr || !tabla) return;
-  const nombre = sel.options[sel.selectedIndex].textContent;
-  listadoRelFiltro = { tabla, id: parseInt(idStr), nombre };
-  render();
-}
-function listadoQuitarCruce() { listadoRelFiltro = null; render(); }
-
-function renderListadoFiltrosChips() {
-  if (listadoFiltros.length === 0) return '';
-  return listadoFiltros.map((f,i)=>`<span class="chip active" style="cursor:default">${escAttr(f.label)} <span style="cursor:pointer;margin-left:6px;font-weight:bold" onclick="listadoQuitarFiltro(${i})">✕</span></span>`).join('');
+  listadoPendiente.cruce = (idStr && tabla)
+    ? { tabla, id: parseInt(idStr), nombre: sel.options[sel.selectedIndex].textContent }
+    : null;
+  listadoMarcarPendiente();
 }
 
 function renderListadoCruceControl() {
-  if (listadoRelFiltro) {
-    const t = LISTADO_TABLAS[listadoRelFiltro.tabla];
-    return `<span class="chip active" style="cursor:default">${t.icon} ${escAttr(listadoRelFiltro.nombre)} <span style="cursor:pointer;margin-left:6px;font-weight:bold" onclick="listadoQuitarCruce()">✕</span></span>`;
-  }
+  const c = listadoPendiente.cruce;
+  const estilo = 'border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;min-height:36px;background:var(--bg-card);color:var(--text)';
   const opts = Object.keys(LISTADO_TABLAS)
     .filter(t => t !== listadoTablaActual && t !== 'festejos')
-    .map(t=>`<option value="${t}">${LISTADO_TABLAS[t].icon} ${LISTADO_TABLAS[t].label}</option>`).join('');
+    .map(t=>`<option value="${t}" ${c&&c.tabla===t?'selected':''}>${LISTADO_TABLAS[t].icon} ${LISTADO_TABLAS[t].label}</option>`).join('');
   return `
-    <select id="listado-cruce-tabla" onchange="listadoActualizarValoresCruce(this.value)" style="border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;background:#fff">
-      <option value="">— Elegir tabla —</option>${opts}
+    <select id="listado-cruce-tabla" aria-label="Tabla con la que cruzar" onchange="listadoActualizarValoresCruce(this.value)" style="${estilo}">
+      <option value="">— Sin cruzar —</option>${opts}
     </select>
-    <select id="listado-cruce-valor" onchange="listadoAplicarCruceDesdeSelect(this.value)" style="display:none;border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;max-width:220px;background:#fff"></select>`;
+    <select id="listado-cruce-valor" aria-label="Registro con el que cruzar" data-tabla="${c?c.tabla:''}" onchange="listadoElegirCruce(this.value)" style="${c?'':'display:none;'}${estilo};max-width:220px">${c?listadoOpcionesCruce(c.tabla, c.id):''}</select>`;
+}
+
+/* Hay cambios sin aplicar si lo elegido difiere de lo que muestra la tabla,
+   o si hay una condición escrita en el constructor sin añadir. */
+function listadoHayPendientes() {
+  const f = listadoLeerConstructor();
+  const pend = listadoCopiaEstado(listadoPendiente);
+  if (f && !listadoFiltroRepetido(pend.filtros, f)) return true;
+  return JSON.stringify(pend) !== JSON.stringify(listadoEstadoAplicado());
+}
+
+function listadoMarcarPendiente() {
+  const hay = listadoHayPendientes();
+  document.getElementById('listado-btn-ejecutar')?.classList.toggle('pendiente', hay);
+  const aviso = document.getElementById('listado-aviso-pendiente');
+  if (aviso) aviso.hidden = !hay;
+}
+
+function listadoEjecutar() {
+  const f = listadoLeerConstructor();
+  if (f && !listadoFiltroRepetido(listadoPendiente.filtros, f)) listadoPendiente.filtros.push(f);
+  const e = listadoCopiaEstado(listadoPendiente);
+  listadoRapidos = e.rapidos;
+  listadoFiltros = e.filtros;
+  listadoRelFiltro = e.cruce;
+  render();
+  document.getElementById('listado-resultado')?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function listadoLimpiarTodo() {
+  listadoPendiente = listadoEstadoVacio();
+  listadoRapidos = {};
+  listadoFiltros = [];
+  listadoRelFiltro = null;
+  render();
 }
 
 function listadoFilasFiltradas() {
   const cfg = LISTADO_TABLAS[listadoTablaActual];
-  let rows = cfg.getRows();
+  let rows = listadoAplicarRapidos(cfg.getRows(), listadoRapidos);
   listadoFiltros.forEach(f => {
     if (f.tipo === 'rango') {
       rows = rows.filter(r => {
@@ -6337,19 +6732,26 @@ function listadoFilasFiltradas() {
   return rows;
 }
 
+function listadoResumenAplicado() {
+  const partes = [...listadoDescripcionRapidos(), ...listadoFiltros.map(f => f.label)];
+  if (listadoRelFiltro) partes.push(`${LISTADO_TABLAS[listadoRelFiltro.tabla].label}: ${listadoRelFiltro.nombre}`);
+  return partes;
+}
+
 function renderListados() {
   const selectorHtml = `
   <div class="tabla-selector" style="grid-template-columns:repeat(5,1fr)">
     ${Object.entries(LISTADO_TABLAS).map(([id,cfg])=>`<button class="tabla-btn ${listadoTablaActual===id?'selected':''}" onclick="abrirListado('${id}')"><span class="tb-icon">${cfg.icon}</span>${cfg.label}</button>`).join('')}
   </div>`;
-
-  if (!listadoTablaActual) {
-    return `
+  const cabecera = `
     <div class="section-hdr">
       <div class="section-title"><span class="icon">📋</span> Listados</div>
       <button class="btn-filter" onclick="analisisPantalla='menu';render()">← Volver a Análisis</button>
-    </div>
-    <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Pincha una tabla para ver su listado completo. Luego pincha cualquier campo (p. ej. "Novillero") para filtrar al instante, cruza con otra tabla y expórtalo.</div>
+    </div>`;
+
+  if (!listadoTablaActual) {
+    return `${cabecera}
+    <div style="font-size:13px;color:var(--text-light);margin-bottom:14px">Pincha una tabla, elige qué quieres listar (categoría, estado, campos y, si quieres, un cruce con otra tabla) y pulsa <strong>Filtrar</strong>.</div>
     ${selectorHtml}`;
   }
 
@@ -6360,47 +6762,52 @@ function renderListados() {
   const theadHtml = cols.map(c => `<th onclick="listadoOrdenarPor('${c.key}')">${c.label} ${listadoOrden.col===c.key?(listadoOrden.asc?'▲':'▼'):'<span class="sort-icon">⇅</span>'}</th>`).join('');
   const tbodyHtml = rows.map(r => `<tr>${cols.map(c=>{
       const val = r[c.key];
-      if (c.numeric) return `<td class="num">${fmt2(val||0)}</td>`;
+      if (c.numeric) return `<td class="num">${listadoCeldaNumerica(c, val)}</td>`;
       const display = (val===null||val===undefined||val==='') ? '—' : val;
       return `<td data-col="${c.key}" data-val="${escAttr(val)}" data-label="${escAttr(c.label)}" style="cursor:pointer" title="Pinchar para filtrar por ${escAttr(c.label)}">${display}</td>`;
     }).join('')}</tr>`).join('');
   const tfootHtml = `<tr>${cols.map((c,i)=> i===0
       ? `<td><strong>TOTAL (${rows.length})</strong></td>`
       : c.numeric
-        ? `<td class="num" style="font-weight:bold;background:var(--gold-pale)">${fmt2(rows.reduce((a,r)=>a+(parseFloat(r[c.key])||0),0))}</td>`
+        ? `<td class="num" style="font-weight:bold;background:var(--gold-pale)"${c.total==='media'?' title="Media de los valores conocidos"':''}>${listadoTotalColumna(c, rows)}</td>`
         : '<td></td>'
     ).join('')}</tr>`;
 
-  const cruceHtml = listadoTablaActual !== 'festejos' || Object.keys(LISTADO_TABLAS).length
-    ? `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px">
-        <span style="font-size:12px;color:var(--text-mid);font-weight:bold">🔗 Cruzar con:</span>
-        ${renderListadoCruceControl()}
-      </div>`
-    : '';
-
   const camposOpts = cols.map(c=>`<option value="${c.key}">${escAttr(c.label)}${c.numeric?' (rango)':''}</option>`).join('');
+  const estiloSel = 'border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:13px;min-height:36px;background:var(--bg-card);color:var(--text)';
+  const aplicado = listadoResumenAplicado();
 
-  return `
-  <div class="section-hdr">
-    <div class="section-title"><span class="icon">📋</span> Listados</div>
-    <button class="btn-filter" onclick="analisisPantalla='menu';render()">← Volver a Análisis</button>
-  </div>
+  return `${cabecera}
   ${selectorHtml}
-  <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:14px 0 8px;padding:10px 12px;background:var(--gold-pale);border:1px solid var(--border-strong);border-radius:8px">
-    <span style="font-size:12px;color:var(--text-mid);font-weight:bold">🔍 Filtrar por:</span>
-    <select id="listado-campo-select" onchange="listadoActualizarConstructor(this.value)" style="border:1px solid var(--border-strong);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px">
-      <option value="">— Elegir campo —</option>
-      ${camposOpts}
-    </select>
-    <span id="listado-constructor-valor" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap"></span>
-  </div>
-  <div style="margin:0 0 8px;display:flex;flex-wrap:wrap;gap:8px;align-items:center">
-    ${renderListadoFiltrosChips()}
-    ${listadoFiltros.length>0?`<button class="btn-filter" onclick="listadoFiltros=[];render()">✕ Limpiar filtros</button>`:''}
-  </div>
-  ${cruceHtml}
-  <div class="result-header" style="border-radius:var(--radius) var(--radius) 0 0;background:var(--bg-card);border:1px solid var(--border);border-bottom:none">
-    <div class="result-title">${cfg.icon} ${cfg.label} · ${rows.length} resultado${rows.length!==1?'s':''}</div>
+  <section class="listado-panel" aria-label="Qué listar">
+    ${renderListadoRapidos()}
+    <div class="listado-rapido-grupo">
+      <span>Campo:</span>
+      <select id="listado-campo-select" aria-label="Campo por el que filtrar" onchange="listadoActualizarConstructor(this.value)" style="${estiloSel}">
+        <option value="">— Elegir campo —</option>
+        ${camposOpts}
+      </select>
+      <span id="listado-constructor-valor" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-width:0;font-weight:normal"></span>
+      <button type="button" class="btn-filter" onclick="listadoAnadirDesdeConstructor()" title="Añadir esta condición y elegir otra">＋ Añadir otra</button>
+    </div>
+    <div id="listado-condiciones" class="listado-condiciones">${listadoPendiente.filtros.map((f,i) =>
+      `<span class="chip active" style="cursor:default">${escAttr(f.label)} <button type="button" class="chip-x" aria-label="Quitar ${escAttr(f.label)}" onclick="listadoQuitarCondicion(${i})">✕</button></span>`).join('')}</div>
+    <div class="listado-rapido-grupo">
+      <span>Cruzar con:</span>
+      ${renderListadoCruceControl()}
+      <small style="color:var(--text-light)">(opcional)</small>
+    </div>
+    <div class="listado-acciones">
+      <button type="button" id="listado-btn-ejecutar" class="btn-ejecutar" onclick="listadoEjecutar()">▶ Filtrar</button>
+      <button type="button" class="btn-filter" onclick="listadoLimpiarTodo()">↺ Limpiar todo</button>
+      <span id="listado-aviso-pendiente" class="listado-aviso" role="status" hidden>Hay cambios sin aplicar</span>
+    </div>
+  </section>
+  <div id="listado-resultado" class="result-header" style="border-radius:var(--radius) var(--radius) 0 0;background:var(--bg-card);border:1px solid var(--border);border-bottom:none;scroll-margin-top:calc(env(safe-area-inset-top, 0px) + 10px)">
+    <div>
+      <div class="result-title">${cfg.icon} ${cfg.label} · ${rows.length} resultado${rows.length!==1?'s':''}</div>
+      <div style="font-size:11px;color:var(--text-light);margin-top:2px">${aplicado.length ? 'Filtrado por: ' + escAttr(aplicado.join(' · ')) : 'Sin filtros: todos los registros'}</div>
+    </div>
     <div style="display:flex;gap:6px">
       <button class="btn-result-action" onclick="exportarListadoExcel()">📊 Excel</button>
       <button class="btn-result-action" onclick="exportarListadoPDF()">📄 PDF</button>
@@ -6416,23 +6823,47 @@ function renderListados() {
   </div>`;
 }
 
-/* Delegación de clics: cualquier celda de un listado con data-col filtra al
-   instante, sin depender de volver a construir onclick con los valores
-   incrustados (que se rompería con comillas o apóstrofes en los datos). */
+/* Pinchar una celda del resultado es un atajo: añade esa condición y filtra
+   directamente (sin serializar valores en onclick). */
 document.addEventListener('click', e => {
   const td = e.target.closest('#listado-tabla-wrap td[data-col]');
   if (!td) return;
-  listadoAgregarFiltro(td.dataset.col, td.dataset.val, td.dataset.label || td.dataset.col);
+  const f = { tipo:'valor', col:td.dataset.col, val:td.dataset.val, label:`${td.dataset.label || td.dataset.col}: ${td.dataset.val}` };
+  if (!listadoFiltroRepetido(listadoPendiente.filtros, f)) listadoPendiente.filtros.push(f);
+  listadoEjecutar();
 });
+
+/* Total de una columna numérica del listado: suma, o media (Ø) si la columna
+   es una edad o una nota; en las medias solo cuentan los valores > 0. */
+function listadoTotalColumna(c, rows) {
+  if (c.total === 'media') {
+    const m = listadoMediaColumna(c, rows);
+    return m === null ? '—' : 'Ø ' + formatoES(m, 2);
+  }
+  return fmt2(rows.reduce((a,r)=>a+(parseFloat(r[c.key])||0),0));
+}
+function listadoMediaColumna(c, rows) {
+  if (c.totalAgg) return c.totalAgg(rows);
+  const vals = rows.map(r => parseFloat(r[c.key]) || 0).filter(v => v > 0);
+  return vals.length ? vals.reduce((a,v)=>a+v,0) / vals.length : null;
+}
+function listadoCeldaNumerica(c, v) {
+  return (v === null || v === undefined || (c.total === 'media' && !(parseFloat(v) > 0))) ? '—' : fmt2(v || 0);
+}
+
+function listadoTituloExport() {
+  const partes = listadoResumenAplicado();
+  return `Listado de ${LISTADO_TABLAS[listadoTablaActual].label}${partes.length ? ' (' + partes.join(' · ') + ')' : ''}`;
+}
 
 function listadoTablaHtmlParaExport() {
   const cfg  = LISTADO_TABLAS[listadoTablaActual];
   const rows = listadoFilasFiltradas();
   const ths  = cfg.cols.map(c=>`<th>${c.label}</th>`).join('');
-  const trs  = rows.map(r=>`<tr>${cfg.cols.map(c=>`<td>${c.numeric?fmt2(r[c.key]||0):(r[c.key]??'—')}</td>`).join('')}</tr>`).join('');
+  const trs  = rows.map(r=>`<tr>${cfg.cols.map(c=>`<td>${c.numeric?listadoCeldaNumerica(c, r[c.key]):(r[c.key]??'—')}</td>`).join('')}</tr>`).join('');
   const totalCells = cfg.cols.map((c,i)=> i===0
       ? `<td><strong>TOTAL (${rows.length})</strong></td>`
-      : (c.numeric?`<td><strong>${fmt2(rows.reduce((a,r)=>a+(parseFloat(r[c.key])||0),0))}</strong></td>`:'<td></td>')
+      : (c.numeric?`<td><strong>${listadoTotalColumna(c, rows)}</strong></td>`:'<td></td>')
     ).join('');
   return `<table><thead><tr>${ths}</tr></thead><tbody>${trs}<tr>${totalCells}</tr></tbody></table>`;
 }
@@ -6443,59 +6874,271 @@ function exportarListadoExcel() {
   const rows = listadoFilasFiltradas();
   const data = rows.map(r => { const o={}; cfg.cols.forEach(c=>{ o[c.label]=r[c.key]; }); return o; });
   const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = cfg.cols.map(c=>({wch:Math.max(c.label.length+4,14)}));
-  XLSX.utils.book_append_sheet(wb, ws, cfg.label);
+  const valorTotal = c => {
+    if (!c.numeric) return '';
+    const vals = rows.map(r => parseFloat(r[c.key]) || 0);
+    if (c.total !== 'media') return vals.reduce((a,v)=>a+v,0);
+    return listadoMediaColumna(c, rows) ?? '';
+  };
+  const aoa = [cfg.cols.map(c=>c.label),
+    ...data.map(o => cfg.cols.map(c => (c.total === 'media' && !(parseFloat(o[c.label]) > 0)) ? '' : (o[c.label] ?? ''))),
+    cfg.cols.map((c, i) => i === 0 ? `TOTAL (${rows.length})` : valorTotal(c))];
+  const hdr = cfg.cols.map(c => c.total === 'media' ? c.label + ' (total = media)' : c.label);
+  aoa[0] = hdr;
+  XLSX.utils.book_append_sheet(wb, hojaDesdeFilas(aoa, cfg.cols.map(c => c.numeric ? (c.total === 'media' ? '#,##0.00' : '#,##0') : null)), cfg.label);
   XLSX.writeFile(wb, `Listado_${cfg.label.replace(/[^\w]/g,'')}.xlsx`);
 }
 
 function exportarListadoPDF() {
   if (!listadoTablaActual) return;
-  const cfg = LISTADO_TABLAS[listadoTablaActual];
-  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Listado ${cfg.label}</title>
-  <style>body{font-family:Arial,sans-serif;font-size:10px;margin:20px}h2{color:#8B1A1A;margin-bottom:8px}
-  table{border-collapse:collapse;width:100%}th{background:#8B1A1A;color:#fff;padding:5px 7px;text-align:left;font-size:9px}
-  td{padding:4px 7px;border-bottom:1px solid #ddd}tr:nth-child(even)td{background:#FFF8E7}
-  tr:last-child td{font-weight:bold;background:#FFE8B0!important}
-  @media print{body{margin:0}}</style></head><body>
-  <h2>🐂 TAUROMAQUIA — Listado de ${cfg.label}</h2>
-  <p style="font-size:11px;color:#666;margin-bottom:10px">Exportado el ${new Date().toLocaleDateString('es-ES')}</p>
-  ${listadoTablaHtmlParaExport()}
-  <script>window.onload=()=>window.print()<\/script></body></html>`;
-  const w = window.open('','_blank');
-  w.document.write(html); w.document.close();
+  const cfg  = LISTADO_TABLAS[listadoTablaActual];
+  const rows = listadoFilasFiltradas();
+  descargarPDF({
+    titulo: listadoTituloExport(), subtitulo: `${pdfFechaHoy()} · ${formatoES(rows.length)} resultados`,
+    bloques: [{ tipo:'tabla', cabecera: cfg.cols.map(c => c.label), derecha: cfg.cols.map(c => !!c.numeric),
+      filas: rows.map(r => cfg.cols.map(c => c.numeric ? listadoCeldaNumerica(c, r[c.key]) : (r[c.key] ?? '—'))),
+      total: cfg.cols.map((c, i) => i === 0 ? `TOTAL (${formatoES(rows.length)})` : c.numeric ? listadoTotalColumna(c, rows) : '') }],
+  }, `Listado_${cfg.label.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]/g,'')}`);
 }
 
-function exportarWordDesdeHTML(titulo, tablaHtml, nombreArchivo) {
+/* ════════════════════════════════════════
+   PDF — generador propio sin dependencias ni ventanas emergentes.
+   Crea el archivo .pdf directamente (texto, tablas paginadas e imagen del
+   gráfico), así funciona igual en Safari, iPhone/iPad y como PWA.
+   ════════════════════════════════════════ */
+const PDF_WINANSI_EXTRA = { '€':0x80,'‚':0x82,'ƒ':0x83,'„':0x84,'…':0x85,'†':0x86,'‡':0x87,'ˆ':0x88,'‰':0x89,'Š':0x8A,'‹':0x8B,'Œ':0x8C,'Ž':0x8E,
+  '‘':0x91,'’':0x92,'“':0x93,'”':0x94,'•':0x95,'–':0x96,'—':0x97,'˜':0x98,'™':0x99,'š':0x9A,'›':0x9B,'œ':0x9C,'ž':0x9E,'Ÿ':0x9F };
+const PDF_SUSTITUTOS = { '≥':'>=', '≤':'<=', '→':'->', '←':'<-', '▲':'', '▼':'', '⇅':'', '✕':'x', '✓':'Si', '✗':'No', '\u200d':'' };
+
+function pdfTexto(s) {
+  let t = '';
+  for (const ch of String(s ?? '')) {
+    if (PDF_SUSTITUTOS[ch] !== undefined) { t += PDF_SUSTITUTOS[ch]; continue; }
+    const c = ch.codePointAt(0);
+    if ((c >= 32 && c < 127) || (c >= 160 && c <= 255) || PDF_WINANSI_EXTRA[ch]) t += ch;
+    else if (c === 9 || c === 10) t += ' ';
+  }
+  return t.replace(/\s+/g, ' ').trim();
+}
+function pdfBytesTexto(s) {
+  const out = [];
+  for (const ch of s) {
+    const b = PDF_WINANSI_EXTRA[ch] ?? ch.codePointAt(0);
+    if (b === 40 || b === 41 || b === 92) out.push(92);
+    out.push(b);
+  }
+  return out;
+}
+
+let _pdfCtxMedida = null;
+function pdfAncho(texto, tam, negrita) {
+  try {
+    if (!_pdfCtxMedida) _pdfCtxMedida = document.createElement('canvas').getContext('2d');
+    if (_pdfCtxMedida && _pdfCtxMedida.measureText) {
+      _pdfCtxMedida.font = `${negrita ? 'bold ' : ''}100px Helvetica, Arial, sans-serif`;
+      const w = _pdfCtxMedida.measureText(texto).width;
+      if (w > 0) return w / 100 * tam;
+    }
+  } catch (e) { /* se usa la estimación */ }
+  return texto.length * tam * (negrita ? 0.56 : 0.52);
+}
+function pdfRecortar(texto, ancho, tam, negrita) {
+  if (pdfAncho(texto, tam, negrita) <= ancho) return texto;
+  let t = texto;
+  while (t.length > 1 && pdfAncho(t + '…', tam, negrita) > ancho) t = t.slice(0, -1);
+  return t + '…';
+}
+function pdfColor(hex) {
+  const h = hex.replace('#','');
+  return [0,2,4].map(i => (parseInt(h.substr(i,2),16)/255).toFixed(3)).join(' ');
+}
+
+/* doc = { titulo, subtitulo, bloques:[ {tipo:'tabla', cabecera:[], filas:[[]], total:[]|null, derecha:[bool]},
+                                        {tipo:'imagen', dataUrl, ancho, alto}, {tipo:'texto', texto} ] } */
+function generarPDF(doc) {
+  const maxCols = Math.max(1, ...doc.bloques.filter(b => b.tipo === 'tabla').map(b => b.cabecera.length));
+  const apaisado = maxCols > 6;
+  const W = apaisado ? 842 : 595, H = apaisado ? 595 : 842, M = 36;
+  const paginas = [];
+  let ops, y;
+  const nuevaPagina = () => { ops = []; paginas.push(ops); y = H - M; };
+  const texto = (s, x, yy, tam, negrita, color = '#222222') =>
+    ops.push({ t:'txt', s: pdfTexto(s), x, y: yy, tam, negrita, color });
+  const rect = (x, yy, w, h, color) => ops.push({ t:'rect', x, y: yy, w, h, color });
+  const imagenes = [];
+
+  nuevaPagina();
+  texto('TAUROMAQUIA — ' + doc.titulo, M, y - 14, 14, true, '#8B1A1A');
+  y -= 22;
+  if (doc.subtitulo) { texto(doc.subtitulo, M, y - 9, 9, false, '#666666'); y -= 16; }
+  y -= 6;
+
+  doc.bloques.forEach(b => {
+    if (b.tipo === 'texto') {
+      if (y - 14 < M + 20) nuevaPagina();
+      texto(b.texto, M, y - 10, 9, false, '#555555'); y -= 16;
+      return;
+    }
+    if (b.tipo === 'imagen') {
+      const maxW = W - 2*M, maxH = H - 2*M - 30;
+      const esc = Math.min(maxW / b.ancho, maxH / b.alto, 1);
+      const w = b.ancho * esc, h = b.alto * esc;
+      if (y - h < M + 20) nuevaPagina();
+      imagenes.push(b);
+      ops.push({ t:'img', n: imagenes.length, x: M, y: y - h, w, h });
+      y -= h + 12;
+      return;
+    }
+    // Tabla
+    const tam = 8, pad = 4, altoFila = tam + 2*pad + 2;
+    const anchoDisp = W - 2*M;
+    const todas = [b.cabecera, ...b.filas, ...(b.total ? [b.total] : [])].map(f => f.map(v => pdfTexto(v)));
+    // La cabecera puede partirse en dos líneas: cuenta su palabra más larga, no el texto entero
+    const anchoCab = t => Math.max(pdfAncho(t, tam, true) / 2, ...t.split(' ').map(p => pdfAncho(p, tam, true)));
+    let anchos = b.cabecera.map((_, c) => Math.max(anchoCab(todas[0][c] || ''),
+      ...todas.slice(1).map((f, i) => pdfAncho(f[c] || '', tam, !!b.total && i === todas.length - 2))) + 2*pad);
+    const suma = anchos.reduce((a, v) => a + v, 0);
+    if (suma > anchoDisp) {
+      // Reparte: columnas estrechas se quedan, las anchas se recortan proporcionalmente
+      const minimo = 40;
+      const exceso = suma - anchoDisp;
+      const recortables = anchos.map(a => Math.max(0, a - minimo));
+      const totalRec = recortables.reduce((a, v) => a + v, 0) || 1;
+      anchos = anchos.map((a, i) => a - exceso * recortables[i] / totalRec);
+    } else {
+      anchos = anchos.map(a => a * anchoDisp / suma);
+    }
+    const partir = (t, ancho) => {
+      const lineas = []; let actual = '';
+      t.split(' ').forEach(p => {
+        const prueba = actual ? actual + ' ' + p : p;
+        if (actual && pdfAncho(prueba, tam, true) > ancho) { lineas.push(actual); actual = p; } else actual = prueba;
+      });
+      if (actual) lineas.push(actual);
+      return lineas.length > 2 ? [lineas[0], lineas.slice(1).join(' ')] : lineas;
+    };
+    const fila = (valores, estilo) => {
+      const lineasCab = estilo === 'cab' ? valores.map((v, c) => partir(v || '', anchos[c] - 2*pad)) : null;
+      const alto = estilo === 'cab' ? Math.max(1, ...lineasCab.map(l => l.length)) * (tam + 2) + 2*pad : altoFila;
+      if (y - alto < M + 20) { nuevaPagina(); if (estilo !== 'cab') fila(todas[0], 'cab'); }
+      const fondo = estilo === 'cab' ? '#8B1A1A' : estilo === 'total' ? '#FFE8B0' : estilo === 'par' ? '#FFF8E7' : null;
+      if (fondo) rect(M, y - alto, anchoDisp, alto, fondo);
+      let x = M;
+      valores.forEach((v, c) => {
+        const negrita = estilo === 'cab' || estilo === 'total';
+        if (estilo === 'cab') {
+          lineasCab[c].forEach((l, k) => ops.push({ t:'txt', s: pdfRecortar(l, anchos[c] - 2*pad, tam, true), x: x + pad, y: y - pad - tam + 1 - k*(tam + 2), tam, negrita: true, color:'#FFFFFF' }));
+          x += anchos[c];
+          return;
+        }
+        const s = pdfRecortar(v || '', anchos[c] - 2*pad, tam, negrita);
+        const der = estilo !== 'cab' && b.derecha && b.derecha[c];
+        const tx = der ? x + anchos[c] - pad - pdfAncho(s, tam, negrita) : x + pad;
+        ops.push({ t:'txt', s, x: tx, y: y - pad - tam + 1, tam, negrita, color: estilo === 'cab' ? '#FFFFFF' : '#222222' });
+        x += anchos[c];
+      });
+      if (estilo !== 'cab') ops.push({ t:'line', x1: M, x2: M + anchoDisp, y: y - alto, color:'#DDDDDD' });
+      y -= alto;
+    };
+    if (y - altoFila*3 < M + 20) nuevaPagina();
+    fila(todas[0], 'cab');
+    todas.slice(1, todas.length - (b.total ? 1 : 0)).forEach((f, i) => fila(f, i % 2 ? 'par' : null));
+    if (b.total) fila(todas[todas.length - 1], 'total');
+    y -= 12;
+  });
+
+  // Pie de página
+  paginas.forEach((p, i) => p.push({ t:'txt', s:`Página ${i+1} de ${paginas.length}`, x: W - M - 60, y: M - 18, tam: 8, negrita:false, color:'#888888' }));
+
+  // ── Serialización ──
+  const partes = []; let largo = 0; const offsets = [];
+  const enc = new TextEncoder();
+  const add = x => { const b = typeof x === 'string' ? enc.encode(x) : x; partes.push(b); largo += b.length; };
+  const obj = (n, cuerpo) => { offsets[n] = largo; add(`${n} 0 obj\n`); cuerpo(); add(`\nendobj\n`); };
+  const numImg0 = 5, numPag0 = numImg0 + imagenes.length;
+  add('%PDF-1.4\n'); add(new Uint8Array([37, 226, 227, 207, 211, 10]));
+  obj(1, () => add('<< /Type /Catalog /Pages 2 0 R >>'));
+  obj(2, () => add(`<< /Type /Pages /Count ${paginas.length} /Kids [${paginas.map((_, i) => `${numPag0 + i*2} 0 R`).join(' ')}] >>`));
+  obj(3, () => add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'));
+  obj(4, () => add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'));
+  imagenes.forEach((im, i) => {
+    const bin = atob(im.dataUrl.split(',')[1]);
+    const bytes = new Uint8Array(bin.length);
+    for (let k = 0; k < bin.length; k++) bytes[k] = bin.charCodeAt(k);
+    obj(numImg0 + i, () => { add(`<< /Type /XObject /Subtype /Image /Width ${im.ancho} /Height ${im.alto} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`); add(bytes); add('\nendstream'); });
+  });
+  const xobjs = imagenes.length ? `/XObject << ${imagenes.map((_, i) => `/Im${i+1} ${numImg0 + i} 0 R`).join(' ')} >>` : '';
+  paginas.forEach((p, i) => {
+    const bytes = [];
+    const push = s => { for (const b of enc.encode(s)) bytes.push(b); };
+    p.forEach(o => {
+      if (o.t === 'rect') push(`${pdfColor(o.color)} rg ${o.x.toFixed(2)} ${o.y.toFixed(2)} ${o.w.toFixed(2)} ${o.h.toFixed(2)} re f\n`);
+      else if (o.t === 'line') push(`${pdfColor(o.color)} RG 0.5 w ${o.x1.toFixed(2)} ${o.y.toFixed(2)} m ${o.x2.toFixed(2)} ${o.y.toFixed(2)} l S\n`);
+      else if (o.t === 'img') push(`q ${o.w.toFixed(2)} 0 0 ${o.h.toFixed(2)} ${o.x.toFixed(2)} ${o.y.toFixed(2)} cm /Im${o.n} Do Q\n`);
+      else { push(`BT ${pdfColor(o.color)} rg /F${o.negrita ? 2 : 1} ${o.tam} Tf ${o.x.toFixed(2)} ${o.y.toFixed(2)} Td (`); bytes.push(...pdfBytesTexto(o.s)); push(') Tj ET\n'); }
+    });
+    const nPag = numPag0 + i*2;
+    obj(nPag, () => add(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${W} ${H}] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> ${xobjs} >> /Contents ${nPag + 1} 0 R >>`));
+    obj(nPag + 1, () => { add(`<< /Length ${bytes.length} >>\nstream\n`); add(new Uint8Array(bytes)); add('\nendstream'); });
+  });
+  const total = numPag0 + paginas.length*2;
+  const xref = largo;
+  add(`xref\n0 ${total}\n0000000000 65535 f \n`);
+  for (let n = 1; n < total; n++) add(String(offsets[n]).padStart(10, '0') + ' 00000 n \n');
+  add(`trailer\n<< /Size ${total} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`);
+  return new Blob(partes, { type:'application/pdf' });
+}
+
+function descargarPDF(doc, nombre) {
+  try {
+    descargarBlob(generarPDF(doc), nombre.endsWith('.pdf') ? nombre : nombre + '.pdf');
+    showToast('📄 PDF generado');
+  } catch (e) {
+    console.error(e);
+    showToast('❌ No se pudo generar el PDF');
+  }
+}
+function pdfFechaHoy() { return 'Exportado el ' + new Date().toLocaleDateString('es-ES'); }
+
+function exportarWordDesdeHTML(titulo, tablaHtml, nombreArchivo, imagenes = []) {
   const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
   <head><meta charset="UTF-8"><title>${titulo}</title>
   <style>
     body{font-family:Calibri,Arial,sans-serif;font-size:11pt}
     h2{color:#8B1A1A}
-    table{border-collapse:collapse;width:100%}
+    table{border-collapse:collapse;width:100%;margin-bottom:10pt}
     th{background:#8B1A1A;color:#fff;padding:6px 8px;text-align:left;font-size:10pt}
     td{padding:5px 8px;border:1px solid #ccc;font-size:10pt}
     tr:nth-child(even) td{background:#FFF8E7}
     tr:last-child td{font-weight:bold;background:#FFE8B0}
+    table.resumen{width:auto} table.resumen td{background:#FFF8E7;font-weight:normal}
   </style></head>
   <body>
     <h2>🐂 TAUROMAQUIA — ${titulo}</h2>
     <p>Generado el ${new Date().toLocaleDateString('es-ES')}</p>
     ${tablaHtml}
   </body></html>`;
-  const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = nombreArchivo.endsWith('.doc') ? nombreArchivo : nombreArchivo + '.doc';
-  a.click();
-  URL.revokeObjectURL(url);
+  const archivo = nombreArchivo.endsWith('.doc') ? nombreArchivo : nombreArchivo + '.doc';
+  if (!imagenes.length) {
+    descargarBlob(new Blob(['\ufeff', html], { type: 'application/msword' }), archivo);
+    return;
+  }
+  // Con imágenes: documento MHTML (multipart/related), que Word abre con el gráfico incrustado
+  const b64 = txt => { const bytes = new TextEncoder().encode(txt); let s = ''; bytes.forEach(b => s += String.fromCharCode(b)); return btoa(s); };
+  const trocear = s => s.replace(/.{1,76}/g, '$&\r\n');
+  const limite = '----=_TauromaquiaParte';
+  const partes = [
+    `--${limite}\r\nContent-Location: file:///C:/tauromaquia/documento.htm\r\nContent-Transfer-Encoding: base64\r\nContent-Type: text/html; charset="utf-8"\r\n\r\n${trocear(b64(html))}`,
+    ...imagenes.map(im => `--${limite}\r\nContent-Location: file:///C:/tauromaquia/${im.nombre}\r\nContent-Transfer-Encoding: base64\r\nContent-Type: image/png\r\n\r\n${trocear(im.dataUrl.split(',')[1])}`),
+  ];
+  const mht = `MIME-Version: 1.0\r\nContent-Type: multipart/related; boundary="${limite}"; type="text/html"\r\n\r\n${partes.join('\r\n')}\r\n--${limite}--\r\n`;
+  descargarBlob(new Blob([mht], { type: 'application/msword' }), archivo);
 }
 
 function exportarListadoWord() {
   if (!listadoTablaActual) return;
   const cfg = LISTADO_TABLAS[listadoTablaActual];
-  exportarWordDesdeHTML(`Listado de ${cfg.label}`, listadoTablaHtmlParaExport(), `Listado_${cfg.label.replace(/[^\w]/g,'')}`);
+  exportarWordDesdeHTML(escAttr(listadoTituloExport()), listadoTablaHtmlParaExport(), `Listado_${cfg.label.replace(/[^\w]/g,'')}`);
 }
 
 function renderAnalisisCombinado() {
@@ -6838,7 +7481,8 @@ function setGraficoTipo(t) {
 /* ─── MOTOR DE CONSULTA CRUZADA ─── */
 function generarAnalisis() {
   // Todas las actuaciones son la base
-  let detalle = [...DB.festejos_detalle];
+  // Solo festejos vistos y puntuados
+  let detalle = actuacionesAnalizables();
 
   // Restricción por año (desplegable "Filtrar por año"): si hay una selección
   // activa que no cubre todos los años disponibles, se aplica antes que nada.
@@ -6894,7 +7538,7 @@ function generarAnalisis() {
   // Calcular métricas por grupo
   let filas = [];
   grupos.forEach(({ k1, k2, rows }) => {
-    const fila = { _dim1: k1, _dim2: k2 };
+    const fila = { _dim1: k1, _dim2: k2, _rows: rows };
     metDefs.forEach(m => { fila[m.id] = m.agg(rows); });
     filas.push(fila);
   });
@@ -6916,15 +7560,8 @@ function generarAnalisis() {
     });
   });
 
-  // Ordenar por métrica seleccionada, respetando dirección
-  if (metDefs.length) {
-    const sortMet = metDefs[anOrden.col < metDefs.length ? anOrden.col : 0].id;
-    filas.sort((a,b) => {
-      const av = parseFloat(a[sortMet])||0;
-      const bv = parseFloat(b[sortMet])||0;
-      return anOrden.asc ? av - bv : bv - av;
-    });
-  }
+  // Ordenar igual que la tabla (columna 0 = nombre, 1.. = métricas)
+  filas = analisisFilasOrdenadas(filas, metDefs, dim2def);
 
   // Top N
   if (anTopN > 0) filas = filas.slice(0, anTopN);
@@ -6935,8 +7572,103 @@ function generarAnalisis() {
 
 function fmt2(n) {
   if (n === null || n === undefined || isNaN(n)) return '—';
-  if (Number.isInteger(n)) return n.toLocaleString('es-ES');
-  return parseFloat(n).toLocaleString('es-ES',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if (Number.isInteger(n)) return formatoES(n);
+  return formatoES(parseFloat(n), 2);
+}
+
+/* ─── Totales de métricas: cada métrica se recalcula sobre todas las
+   actuaciones incluidas (nunca sumando ni promediando filas), así las medias
+   dan la media total y los recuentos "sin repetir" no duplican festejos. ─── */
+function analisisFilaEtiqueta(f, dim2def) {
+  return dim2def ? `${f._dim1 || '—'} × ${f._dim2 || '—'}` : (f._dim1 || '—');
+}
+
+function analisisValorFmt(m, v) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  if (m.eur) return formatoES(v, 2, 2) + ' €';
+  return m.tipo === 'numero' ? formatoES(Math.round(v)) : formatoES(v, 2, 2);
+}
+
+function analisisFormatoExcel(m) {
+  return m.eur ? '#,##0.00 "€"' : (m.tipo === 'numero' ? '#,##0' : '#,##0.00');
+}
+
+function analisisFilasOrdenadas(filas, metDefs, dim2def) {
+  const col = anOrden.col;
+  const dir = anOrden.asc ? 1 : -1;
+  if (col === 0) {
+    return [...filas].sort((a,b) => dir * analisisFilaEtiqueta(a, dim2def).localeCompare(analisisFilaEtiqueta(b, dim2def), 'es'));
+  }
+  const m = metDefs[col - 1] || metDefs[0];
+  return [...filas].sort((a,b) => dir * ((parseFloat(a[m.id])||0) - (parseFloat(b[m.id])||0)));
+}
+
+function analisisResumen() {
+  const { filas, dim1def, dim2def, metDefs } = analisisLastResult;
+  const todas = filas.flatMap(f => f._rows);
+  const grupo = dim1def.label.toLowerCase() + (dim2def ? ' × ' + dim2def.label.toLowerCase() : '');
+  return metDefs.map(m => {
+    const total = m.agg(todas);
+    let maxFila = null;
+    filas.forEach(f => { if (maxFila === null || (parseFloat(f[m.id])||0) > (parseFloat(maxFila[m.id])||0)) maxFila = f; });
+    const maxVal = maxFila ? (parseFloat(maxFila[m.id])||0) : 0;
+    const empates = filas.filter(f => (parseFloat(f[m.id])||0) === maxVal).length - 1;
+    const tarjetas = [{
+      valor: analisisValorFmt(m, total),
+      etiqueta: m.clase === 'media' ? `Media total · ${m.label}`
+              : m.clase === 'unico' ? `${m.label} (sin repetir festejos)`
+              : `Total · ${m.label}`,
+    }];
+    if (m.clase === 'suma' && filas.length) {
+      tarjetas.push({ valor: analisisValorFmt({ tipo:'decimal' }, filas.reduce((a,f)=>a+(parseFloat(f[m.id])||0),0) / filas.length),
+                      etiqueta: `${m.label} · promedio por ${grupo}` });
+    }
+    if (maxFila) {
+      tarjetas.push({ valor: analisisValorFmt(m, maxVal),
+                      etiqueta: `Máximo · ${m.label}`,
+                      detalle: analisisFilaEtiqueta(maxFila, dim2def) + (empates > 0 ? ` (+${empates} empatado${empates>1?'s':''})` : '') });
+    }
+    return { m, total, tarjetas };
+  });
+}
+
+/* Tabla tal como se ve en pantalla (plana o cruzada), con su fila de totales,
+   para pintarla y para exportarla sin duplicar lógica. */
+function analisisTablaVisible() {
+  const { filas, dim1def, dim2def, metDefs } = analisisLastResult;
+  const agg = (m, rows) => rows.length ? m.agg(rows) : null;
+  if (dim2def) {
+    const m = metDefs[0];
+    const dim1Vals = [...new Set(filas.map(f=>f._dim1))];
+    const dim2Vals = [...new Set(filas.map(f=>f._dim2))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
+    const lookup = new Map(filas.map(f => [f._dim1 + '|||' + f._dim2, f]));
+    const rowsDe = (d1, d2) => filas.filter(f => (d1===null || f._dim1===d1) && (d2===null || f._dim2===d2)).flatMap(f => f._rows);
+    return {
+      titulo: `Tabla cruzada: ${dim1def.label} × ${dim2def.label} → ${m.label}`,
+      cabecera: [`${dim1def.label} \\ ${dim2def.label}`, ...dim2Vals.map(v => v || '—'), 'Total'],
+      metricasCol: [null, ...dim2Vals.map(()=>m), m],
+      filas: dim1Vals.map(d1 => [d1 || '—', ...dim2Vals.map(d2 => { const f = lookup.get(d1+'|||'+d2); return f ? f[m.id] : null; }), agg(m, rowsDe(d1, null))]),
+      totales: [`TOTAL (${dim1Vals.length})`, ...dim2Vals.map(d2 => agg(m, rowsDe(null, d2))), agg(m, rowsDe(null, null))],
+    };
+  }
+  const ordenadas = analisisFilasOrdenadas(filas, metDefs, null);
+  const todas = filas.flatMap(f => f._rows);
+  return {
+    titulo: '',
+    cabecera: [dim1def.label, ...metDefs.map(m => m.label)],
+    metricasCol: [null, ...metDefs],
+    filas: ordenadas.map(f => [f._dim1 || '—', ...metDefs.map(m => f[m.id])]),
+    totales: [`TOTAL (${filas.length})`, ...metDefs.map(m => agg(m, todas))],
+  };
+}
+
+function analisisDatosGrafico() {
+  const { filas, dim2def, metDefs } = analisisLastResult;
+  const top = analisisFilasOrdenadas(filas, metDefs, dim2def).slice(0, 30);
+  return {
+    labels: top.map(f => analisisFilaEtiqueta(f, dim2def)),
+    series: metDefs.map((m, i) => ({ m, nombre: m.label, color: getColorAnalisis(m.id, i), valores: top.map(f => parseFloat(f[m.id])||0) })),
+  };
 }
 
 function mostrarResultadosAnalisis(view) {
@@ -6946,80 +7678,31 @@ function mostrarResultadosAnalisis(view) {
   const panel = document.getElementById('analisis-results-panel');
   if (!panel) return;
 
-  const hayDim2 = !!dim2def;
+  const summHtml = analisisResumen().slice(0, 6).flatMap(r => r.tarjetas).map(t => `
+    <div class="asumm"><div class="asv">${t.valor}</div><div class="asl">${escAttr(t.etiqueta)}</div>${t.detalle ? `<div class="asd">${escAttr(t.detalle)}</div>` : ''}</div>`).join('');
 
-  // Resumen numérico global
-  const summHtml = metDefs.slice(0,6).map(m => {
-    const vals = filas.map(r=>parseFloat(r[m.id])||0);
-    const total = vals.reduce((a,b)=>a+b,0);
-    const max   = vals.length ? Math.max(...vals) : 0;
-    const avg   = vals.length ? total/vals.length : 0;
-    return `<div class="asumm"><div class="asv">${fmt2(total)}</div><div class="asl">Σ ${m.label}</div></div>
-            <div class="asumm"><div class="asv">${fmt2(avg)}</div><div class="asl">Ø promedio</div></div>
-            <div class="asumm"><div class="asv">${fmt2(max)}</div><div class="asl">↑ máximo</div></div>`;
-  }).join('');
-
-  // Si hay dim2: tabla pivotada (dim1 × dim2)
-  let tableHtml = '';
-  if (hayDim2) {
-    const dim2Vals = [...new Set(filas.map(f=>f._dim2))].sort();
-    const dim1Vals = [...new Set(filas.map(f=>f._dim1))];
-    // Pick first metric for pivot display
-    const pivMet = metDefs[0];
-    // Build lookup
-    const lookup = {};
-    filas.forEach(f => { lookup[f._dim1+'|||'+f._dim2] = f; });
-    const numVals = filas.map(f=>parseFloat(f[pivMet.id])||0);
-    const gMax = numVals.length ? Math.max(...numVals) : 1;
-
-    tableHtml = `
+  const tv = analisisTablaVisible();
+  const celda = (v, m) => `<td class="num">${v === null || v === undefined ? '—' : analisisValorFmt(m, v)}</td>`;
+  const thHtml = tv.cabecera.map((c, i) => dim2def
+      ? `<th>${escAttr(c)}</th>`
+      : `<th onclick="anOrden={col:${i},asc:anOrden.col===${i}?!anOrden.asc:${i===0}};mostrarResultadosAnalisis()">${escAttr(c)} ${anOrden.col===i?(anOrden.asc?'▲':'▼'):'<span class="sort-icon">⇅</span>'}</th>`).join('');
+  const tbHtml = tv.filas.map(fila => `<tr>${fila.map((v, i) => i === 0
+      ? `<td><strong>${escAttr(v)}</strong></td>`
+      : (dim2def && i === fila.length - 1 ? celda(v, tv.metricasCol[i]).replace('<td class="num">', '<td class="num" style="background:var(--gold-pale);font-weight:bold">') : celda(v, tv.metricasCol[i]))).join('')}</tr>`).join('');
+  const tfHtml = `<tr>${tv.totales.map((v, i) => i === 0
+      ? `<td><strong>${escAttr(v)}</strong></td>`
+      : `<td class="num" style="font-weight:bold;background:var(--gold-pale)">${v === null || v === undefined ? '—' : analisisValorFmt(tv.metricasCol[i], v)}</td>`).join('')}</tr>`;
+  const tableHtml = `
     <div style="overflow-x:auto">
-      <div style="font-size:11px;color:var(--text-light);padding:8px 14px;font-style:italic">
-        Tabla cruzada: ${dim1def.label} × ${dim2def.label} → ${pivMet.label}
-        ${metDefs.length>1?' (otras métricas en el resumen superior)':''}
-      </div>
-      <table class="analisis-table">
-        <thead><tr>
-          <th>${dim1def.label} \\ ${dim2def.label}</th>
-          ${dim2Vals.map(v=>`<th>${v||'—'}</th>`).join('')}
-          <th>Total</th>
-        </tr></thead>
-        <tbody>
-          ${dim1Vals.map(d1 => {
-            let rowTotal = 0;
-            const cells = dim2Vals.map(d2 => {
-              const f = lookup[d1+'|||'+d2];
-              const val = f ? (parseFloat(f[pivMet.id])||0) : 0;
-              rowTotal += val;
-              const cls = val > 0 && val >= gMax*0.75 ? 'hi' : '';
-              return `<td class="num ${cls}">${val>0?fmt2(val):'—'}</td>`;
-            }).join('');
-            return `<tr><td><strong>${d1||'—'}</strong></td>${cells}<td class="num" style="background:var(--gold-pale);font-weight:bold">${fmt2(rowTotal)}</td></tr>`;
-          }).join('')}
-        </tbody>
-      </table>
+      ${tv.titulo ? `<div style="font-size:11px;color:var(--text-light);padding:8px 14px;font-style:italic">${escAttr(tv.titulo)}${metDefs.length>1?' (otras métricas en el resumen superior)':''}</div>` : ''}
+      <table class="analisis-table"><thead><tr>${thHtml}</tr></thead><tbody>${tbHtml}</tbody><tfoot>${tfHtml}</tfoot></table>
     </div>`;
-  } else {
-    // Tabla plana
-    const numVals = metDefs.flatMap(m=>filas.map(f=>parseFloat(f[m.id])||0));
-    const gMax = numVals.length ? Math.max(...numVals) : 1;
-    const thHtml = `<th onclick="anOrden={col:0,asc:!anOrden.asc};mostrarResultadosAnalisis()">${dim1def.label} <span class="sort-icon">⇅</span></th>`
-      + metDefs.map((m,i)=>`<th onclick="anOrden={col:${i+1},asc:!anOrden.asc};mostrarResultadosAnalisis()">${m.label} <span class="sort-icon">⇅</span></th>`).join('');
-    const tbHtml = filas.map((f,ri) => {
-      const cells = metDefs.map(m=>{
-        const n = parseFloat(f[m.id])||0;
-        const cls = n>0&&n>=gMax*0.75?'hi':'';
-        return `<td class="num ${cls}">${fmt2(n)}</td>`;
-      }).join('');
-      return `<tr><td><strong>${f._dim1||'—'}</strong></td>${cells}</tr>`;
-    }).join('');
-    tableHtml = `<div style="overflow-x:auto"><table class="analisis-table"><thead><tr>${thHtml}</tr></thead><tbody>${tbHtml}</tbody></table></div>`;
-  }
 
+  const nAct = filas.reduce((a, f) => a + f._rows.length, 0);
   panel.innerHTML = `
     <div class="result-header">
       <div class="result-title">
-        ${filas.length} ${dim1def.label}${hayDim2?' × '+dim2def.label:''} · ${DB.festejos_detalle.length} actuaciones analizadas
+        ${formatoES(filas.length)} ${dim1def.label}${dim2def?' × '+dim2def.label:''} · ${formatoES(nAct)} actuaciones analizadas
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <div class="view-toggle">
@@ -7027,17 +7710,17 @@ function mostrarResultadosAnalisis(view) {
           <button class="view-btn ${analisisView==='grafico'?'active':''}" onclick="mostrarResultadosAnalisis('grafico')">📈 Gráfico</button>
           <button class="view-btn ${analisisView==='ambos'  ?'active':''}" onclick="mostrarResultadosAnalisis('ambos')">🔀 Ambos</button>
         </div>
-        <button class="btn-result-action" onclick="exportarAnalisis()">📊 Excel</button>
+        <button class="btn-result-action" onclick="exportarAnalisis()" title="Exporta lo que se ve: ${analisisView==='tabla'?'la tabla':analisisView==='grafico'?'el gráfico':'tabla y gráfico'}">📊 Excel</button>
         <button class="btn-result-action" onclick="exportarAnalisisPDF()">📄 PDF</button>
         <button class="btn-result-action" onclick="exportarAnalisisWord()">📝 Word</button>
       </div>
     </div>
     <div class="analisis-summary">${summHtml}</div>
     ${analisisView!=='grafico' ? tableHtml : ''}
-    ${analisisView!=='tabla' ? `<div class="chart-wrap"><canvas id="analisis-chart"></canvas></div>` : ''}`;
+    ${analisisView!=='tabla' ? `<div class="chart-wrap"><canvas id="analisis-chart" role="img" aria-label="Gráfico del análisis"></canvas></div>` : ''}`;
 
   if (analisisView!=='tabla') {
-    setTimeout(() => dibujarGraficoAN(filas, dim1def, metDefs), 60);
+    setTimeout(() => dibujarGraficoAN(), 60);
   }
 }
 
@@ -7050,33 +7733,31 @@ function hexToRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
-function dibujarGraficoAN(filas, dim1def, metDefs) {
+function dibujarGraficoAN() {
   const canvas = document.getElementById('analisis-chart');
-  if (!canvas) return;
+  if (!canvas || !analisisLastResult) return;
   if (analisisChart) { analisisChart.destroy(); analisisChart = null; }
 
-  const top = filas.slice(0, 30); // max 30 en gráfico
-  const labels = top.map(f => String(f._dim1||'—').slice(0,20));
+  const { labels, series } = analisisDatosGrafico();
   const tipo = analisisGraficoTipo;
   const isHoriz = tipo === 'bar_h';
   const esCircular = tipo === 'pie' || tipo === 'doughnut';
   const paletaColores = (ANALISIS_PALETAS[analisisPaleta] && ANALISIS_PALETAS[analisisPaleta].colores) || CHART_COLORS;
 
-  // Multi-dataset: one per métrica, usando la paleta elegida o el color personalizado de cada métrica
-  const datasets = metDefs.map((m,i) => {
-    const colorBase = getColorAnalisis(m.id, i);
-    return {
-      label: m.label,
-      data: top.map(f => parseFloat(f[m.id])||0),
-      backgroundColor: esCircular
-        ? top.map((_,idx) => paletaColores[idx % paletaColores.length])
-        : (tipo==='line' ? hexToRgba(colorBase, 0.15) : colorBase),
-      borderColor: esCircular ? '#fff' : colorBase,
-      borderWidth: tipo==='line' ? 2 : (esCircular ? 2 : 1),
-      tension: 0.3, fill: tipo==='line',
-      pointBackgroundColor: colorBase,
-    };
-  });
+  const datasets = series.map(s => ({
+    label: s.nombre,
+    data: s.valores,
+    backgroundColor: esCircular
+      ? labels.map((_,idx) => paletaColores[idx % paletaColores.length])
+      : (tipo==='line' ? hexToRgba(s.color, 0.15) : s.color),
+    borderColor: esCircular ? '#fff' : s.color,
+    borderWidth: tipo==='line' ? 2 : (esCircular ? 2 : 1),
+    tension: 0.3, fill: tipo==='line',
+    pointBackgroundColor: s.color,
+  }));
+  const eje = { grid:{color:'rgba(0,0,0,0.05)'}, ticks:{color:'#5C4020',font:{size:10}} };
+  const ejeValor = { ...eje, beginAtZero:true, ticks:{ ...eje.ticks, callback: v => formatoES(v, 0, 2) } };
+  const ejeCat = { ...eje, ticks:{ ...eje.ticks, maxRotation:35, callback(v) { const t = this.getLabelForValue(v); return t.length > 28 ? t.slice(0,27)+'…' : t; } } };
 
   analisisChart = new Chart(canvas, {
     type: isHoriz ? 'bar' : tipo,
@@ -7085,61 +7766,182 @@ function dibujarGraficoAN(filas, dim1def, metDefs) {
       indexAxis: isHoriz ? 'y' : 'x',
       responsive: true, maintainAspectRatio: true,
       plugins: {
-        legend: { display: metDefs.length>1 || tipo==='pie'||tipo==='doughnut', position:'top' },
-        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt2(ctx.raw)}` } }
+        legend: { display: series.length>1 || esCircular, position:'top' },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${analisisValorFmt(series[ctx.datasetIndex].m, ctx.raw)}` } }
       },
-      scales: (tipo==='pie'||tipo==='doughnut'||tipo==='radar') ? {} : {
-        x: { stacked: false, grid:{color:'rgba(0,0,0,0.05)'}, ticks:{color:'#5C4020',font:{size:10},maxRotation:35} },
-        y: { grid:{color:'rgba(0,0,0,0.05)'}, ticks:{color:'#5C4020',font:{size:10}}, beginAtZero:true }
-      }
+      scales: esCircular ? {} : tipo === 'radar'
+        ? { r: { beginAtZero:true, ticks:{ callback: v => formatoES(v, 0, 2) } } }
+        : (isHoriz ? { x: ejeValor, y: ejeCat } : { x: ejeCat, y: ejeValor })
     }
   });
 }
 
 function sortAnalisis(i) { anOrden={col:i,asc:!anOrden.asc}; mostrarResultadosAnalisis(); }
 
+/* ─── EXPORTACIÓN: exporta lo que se ve (tabla, gráfico o ambos) ─── */
+function analisisTituloExport() {
+  const { dim1def, dim2def } = analisisLastResult;
+  return `Análisis — ${dim1def.label}${dim2def ? ' × ' + dim2def.label : ''}`;
+}
+function analisisNombreArchivo() {
+  const { dim1def, dim2def } = analisisLastResult;
+  return `Analisis_${dim1def.label}${dim2def ? '_x_' + dim2def.label : ''}`.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]/g,'');
+}
+function analisisVeTabla()   { return analisisView !== 'grafico'; }
+function analisisVeGrafico() { return analisisView !== 'tabla'; }
+
+function hojaDesdeFilas(aoa, formatosCol) {
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  const rango = XLSX.utils.decode_range(ws['!ref']);
+  for (let R = 1; R <= rango.e.r; R++) {
+    for (let C = 0; C <= rango.e.c; C++) {
+      const cell = ws[XLSX.utils.encode_cell({ r:R, c:C })];
+      if (cell && cell.t === 'n') cell.z = formatosCol[C] || (Number.isInteger(cell.v) ? '#,##0' : '#,##0.00');
+    }
+  }
+  ws['!cols'] = aoa[0].map((_, C) => ({ wch: Math.min(40, Math.max(12, ...aoa.map(r => String(r[C] ?? '').length + 2))) }));
+  return ws;
+}
+
 function exportarAnalisis() {
   if (!analisisLastResult) { showToast('Genera el análisis primero'); return; }
-  const { filas, dim1def, dim2def, metDefs } = analisisLastResult;
   const wb = XLSX.utils.book_new();
-  const data = filas.map(f => {
-    const r = { [dim1def.label]: f._dim1 };
-    if (dim2def) r[dim2def.label] = f._dim2;
-    metDefs.forEach(m => { r[m.label] = f[m.id]??0; });
-    return r;
-  });
-  const ws = XLSX.utils.json_to_sheet(data);
-  ws['!cols'] = Object.keys(data[0]||{}).map(k=>({wch:Math.max(k.length+4,14)}));
-  XLSX.utils.book_append_sheet(wb, ws, 'Análisis');
-  XLSX.writeFile(wb, `Analisis_${dim1def.label.replace(/[^\w]/g,'')}.xlsx`);
+  if (analisisVeTabla()) {
+    const tv = analisisTablaVisible();
+    const aoa = [tv.cabecera, ...tv.filas.map(f => f.map(v => v ?? '')), tv.totales.map(v => v ?? '')];
+    XLSX.utils.book_append_sheet(wb, hojaDesdeFilas(aoa, tv.metricasCol.map(m => m ? analisisFormatoExcel(m) : null)), 'Tabla');
+  }
+  if (analisisVeGrafico()) {
+    const g = analisisDatosGrafico();
+    const aoa = [[analisisLastResult.dim1def.label + (analisisLastResult.dim2def ? ' × ' + analisisLastResult.dim2def.label : ''), ...g.series.map(s => s.nombre)],
+                 ...g.labels.map((l, i) => [l, ...g.series.map(s => s.valores[i])])];
+    XLSX.utils.book_append_sheet(wb, hojaDesdeFilas(aoa, [null, ...g.series.map(s => analisisFormatoExcel(s.m))]), 'Gráfico');
+    const datos = XLSX.write(wb, { type:'array', bookType:'xlsx' });
+    const zip = xlsxAnadirGrafico(datos, wb.SheetNames.indexOf('Gráfico'), 'Gráfico', g, analisisGraficoTipo, analisisTituloExport());
+    descargarBlob(new Blob([zip], { type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), analisisNombreArchivo() + '.xlsx');
+    return;
+  }
+  XLSX.writeFile(wb, analisisNombreArchivo() + '.xlsx');
+}
+
+function descargarBlob(blob, nombre) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* Inserta un gráfico nativo de Excel (editable) en la hoja indicada del
+   .xlsx generado por SheetJS, reutilizando su motor ZIP (XLSX.CFB). */
+function xlsxAnadirGrafico(datosXlsx, indiceHoja, nombreHoja, g, tipo, titulo) {
+  const CFB = XLSX.CFB;
+  const zip = CFB.read(new Uint8Array(datosXlsx), { type:'array' });
+  const leer = p => new TextDecoder().decode(CFB.find(zip, p).content);
+  const escribir = (p, txt) => {
+    const bytes = new TextEncoder().encode(txt);
+    const e = CFB.find(zip, p);
+    if (e) e.content = bytes; else CFB.utils.cfb_add(zip, p, bytes);
+  };
+  const x = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const hoja = `'${nombreHoja.replace(/'/g,"''")}'`;
+  const n = g.labels.length;
+  const colL = i => String.fromCharCode(66 + i);
+  const esCircular = tipo === 'pie' || tipo === 'doughnut';
+  const paleta = (ANALISIS_PALETAS[analisisPaleta] && ANALISIS_PALETAS[analisisPaleta].colores) || CHART_COLORS;
+  const rgb = c => String(c || '#8B1A1A').replace('#','').slice(0,6).toUpperCase();
+  const relleno = c => `<c:spPr><a:solidFill><a:srgbClr val="${rgb(c)}"/></a:solidFill></c:spPr>`;
+  const linea = c => `<c:spPr><a:ln w="28575"><a:solidFill><a:srgbClr val="${rgb(c)}"/></a:solidFill></a:ln></c:spPr>`;
+  const cat = `<c:cat><c:strRef><c:f>${hoja}!$A$2:$A$${n+1}</c:f><c:strCache><c:ptCount val="${n}"/>${g.labels.map((l,i)=>`<c:pt idx="${i}"><c:v>${x(l)}</c:v></c:pt>`).join('')}</c:strCache></c:strRef></c:cat>`;
+  const series = g.series.map((s, i) => {
+    const tx = `<c:tx><c:strRef><c:f>${hoja}!$${colL(i)}$1</c:f><c:strCache><c:ptCount val="1"/><c:pt idx="0"><c:v>${x(s.nombre)}</c:v></c:pt></c:strCache></c:strRef></c:tx>`;
+    const val = `<c:val><c:numRef><c:f>${hoja}!$${colL(i)}$2:$${colL(i)}$${n+1}</c:f><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="${n}"/>${s.valores.map((v,j)=>`<c:pt idx="${j}"><c:v>${v}</c:v></c:pt>`).join('')}</c:numCache></c:numRef></c:val>`;
+    const cab = `<c:idx val="${i}"/><c:order val="${i}"/>${tx}`;
+    if (esCircular) return `<c:ser>${cab}${g.labels.map((_,j)=>`<c:dPt><c:idx val="${j}"/><c:bubble3D val="0"/>${relleno(paleta[j % paleta.length])}</c:dPt>`).join('')}${cat}${val}</c:ser>`;
+    if (tipo === 'line')  return `<c:ser>${cab}${linea(s.color)}<c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>${cat}${val}<c:smooth val="0"/></c:ser>`;
+    if (tipo === 'radar') return `<c:ser>${cab}${linea(s.color)}<c:marker><c:symbol val="circle"/><c:size val="5"/></c:marker>${cat}${val}</c:ser>`;
+    return `<c:ser>${cab}${relleno(s.color)}<c:invertIfNegative val="0"/>${cat}${val}</c:ser>`;
+  }).join('');
+  const fmtEje = g.series.every(s => s.m.tipo === 'numero') ? '#,##0' : '#,##0.00';
+  const ejes = (posCat, posVal) => `
+    <c:catAx><c:axId val="500001"/><c:scaling><c:orientation val="${posCat==='l'?'maxMin':'minMax'}"/></c:scaling><c:delete val="0"/><c:axPos val="${posCat}"/><c:numFmt formatCode="General" sourceLinked="1"/><c:tickLblPos val="nextTo"/><c:crossAx val="500002"/><c:crosses val="autoZero"/><c:auto val="1"/><c:lblAlgn val="ctr"/><c:lblOffset val="100"/><c:noMultiLvlLbl val="0"/></c:catAx>
+    <c:valAx><c:axId val="500002"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/><c:axPos val="${posVal}"/><c:majorGridlines/><c:numFmt formatCode="${fmtEje}" sourceLinked="0"/><c:tickLblPos val="nextTo"/><c:crossAx val="500001"/><c:crosses val="${posCat==='l'?'max':'autoZero'}"/><c:crossBetween val="between"/></c:valAx>`;
+  const ids = `<c:axId val="500001"/><c:axId val="500002"/>`;
+  let plot;
+  if (tipo === 'pie')           plot = `<c:pieChart><c:varyColors val="1"/>${series}<c:firstSliceAng val="0"/></c:pieChart>`;
+  else if (tipo === 'doughnut') plot = `<c:doughnutChart><c:varyColors val="1"/>${series}<c:firstSliceAng val="0"/><c:holeSize val="50"/></c:doughnutChart>`;
+  else if (tipo === 'line')     plot = `<c:lineChart><c:grouping val="standard"/><c:varyColors val="0"/>${series}<c:marker val="1"/>${ids}</c:lineChart>${ejes('b','l')}`;
+  else if (tipo === 'radar')    plot = `<c:radarChart><c:radarStyle val="marker"/><c:varyColors val="0"/>${series}${ids}</c:radarChart>${ejes('b','l')}`;
+  else { const h = tipo === 'bar_h';
+    plot = `<c:barChart><c:barDir val="${h?'bar':'col'}"/><c:grouping val="clustered"/><c:varyColors val="0"/>${series}<c:gapWidth val="80"/>${ids}</c:barChart>${h ? ejes('l','b') : ejes('b','l')}`; }
+
+  escribir('/xl/charts/chart1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><c:roundedCorners val="0"/><c:chart><c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:rPr sz="1200" b="1"/><a:t>${x(titulo)}</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/></c:title><c:autoTitleDeleted val="0"/><c:plotArea><c:layout/>${plot}</c:plotArea><c:legend><c:legendPos val="${esCircular?'r':'t'}"/><c:overlay val="0"/></c:legend><c:plotVisOnly val="1"/><c:dispBlanksAs val="gap"/></c:chart></c:chartSpace>`);
+  const colDesde = g.series.length + 2;
+  escribir('/xl/drawings/drawing1.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>${colDesde}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>1</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>${colDesde + 11}</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>${Math.max(24, Math.min(60, n + 6))}</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:graphicFrame macro=""><xdr:nvGraphicFramePr><xdr:cNvPr id="2" name="Gráfico 1"/><xdr:cNvGraphicFramePr/></xdr:nvGraphicFramePr><xdr:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></xdr:xfrm><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/chart"><c:chart xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:id="rId1"/></a:graphicData></a:graphic></xdr:graphicFrame><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>`);
+  escribir('/xl/drawings/_rels/drawing1.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart" Target="../charts/chart1.xml"/></Relationships>`);
+
+  const hojaPath = `/xl/worksheets/sheet${indiceHoja + 1}.xml`;
+  escribir(`/xl/worksheets/_rels/sheet${indiceHoja + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdGraf1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/></Relationships>`);
+  escribir(hojaPath, leer(hojaPath).replace('</worksheet>', '<drawing r:id="rIdGraf1"/></worksheet>'));
+  escribir('/[Content_Types].xml', leer('/[Content_Types].xml').replace('</Types>',
+    '<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>' +
+    '<Override PartName="/xl/charts/chart1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawingml.chart+xml"/></Types>'));
+  return CFB.write(zip, { type:'array', fileType:'zip' });
+}
+
+/* HTML común de PDF y Word: resumen + tabla y/o gráfico, según la vista. */
+function analisisHtmlExport(srcGrafico) {
+  const resumen = analisisResumen().flatMap(r => r.tarjetas)
+    .map(t => `<tr><td>${escAttr(t.etiqueta)}</td><td style="text-align:right"><strong>${t.valor}</strong></td><td>${escAttr(t.detalle || '')}</td></tr>`).join('');
+  let html = `<table class="resumen"><tbody>${resumen}</tbody></table>`;
+  if (analisisVeTabla()) {
+    const tv = analisisTablaVisible();
+    const fmt = (v, i) => i === 0 ? escAttr(v) : (v === null || v === undefined ? '—' : analisisValorFmt(tv.metricasCol[i], v));
+    html += `${tv.titulo ? `<p><em>${escAttr(tv.titulo)}</em></p>` : ''}<table><thead><tr>${tv.cabecera.map(c=>`<th>${escAttr(c)}</th>`).join('')}</tr></thead><tbody>
+      ${tv.filas.map(f => `<tr>${f.map((v,i)=>`<td${i?' style="text-align:right"':''}>${fmt(v,i)}</td>`).join('')}</tr>`).join('')}
+      <tr class="total">${tv.totales.map((v,i)=>`<td${i?' style="text-align:right"':''}><strong>${fmt(v,i)}</strong></td>`).join('')}</tr></tbody></table>`;
+  }
+  if (analisisVeGrafico() && srcGrafico) html += `<p><img src="${srcGrafico}" width="640" style="width:100%;max-width:680px" alt="Gráfico"></p>`;
+  return html;
+}
+
+function analisisImagenGrafico(formato = 'image/png') {
+  if (!analisisVeGrafico() || !analisisChart) return null;
+  const c = analisisChart.canvas;
+  const fondo = document.createElement('canvas');
+  fondo.width = c.width; fondo.height = c.height;
+  const ctx = fondo.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, fondo.width, fondo.height);
+  ctx.drawImage(c, 0, 0);
+  return { dataUrl: fondo.toDataURL(formato, 0.92), ancho: fondo.width, alto: fondo.height };
 }
 
 function exportarAnalisisPDF() {
   if (!analisisLastResult) { showToast('Genera el análisis primero'); return; }
-  const { filas, dim1def, dim2def, metDefs } = analisisLastResult;
-  const ths = [`<th>${dim1def.label}</th>`, ...(dim2def?[`<th>${dim2def.label}</th>`]:[]), ...metDefs.map(m=>`<th>${m.label}</th>`)].join('');
-  const trs = filas.map(f=>`<tr><td>${f._dim1||'—'}</td>${dim2def?`<td>${f._dim2||'—'}</td>`:''}${metDefs.map(m=>`<td>${fmt2(f[m.id])}</td>`).join('')}</tr>`).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Análisis Tauromaquia</title>
-  <style>body{font-family:Arial,sans-serif;font-size:10px;margin:20px}h2{color:#8B1A1A;margin-bottom:8px}
-  table{border-collapse:collapse;width:100%}th{background:#8B1A1A;color:#fff;padding:5px 7px;text-align:left;font-size:9px}
-  td{padding:4px 7px;border-bottom:1px solid #ddd}tr:nth-child(even)td{background:#FFF8E7}
-  p{font-size:11px;color:#666;margin:0 0 10px}@media print{body{margin:0}}</style></head><body>
-  <h2>📊 Análisis — ${dim1def.label}${dim2def?' × '+dim2def.label:''}</h2>
-  <p>${new Date().toLocaleDateString('es-ES')} · ${filas.length} filas</p>
-  <table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>
-  <script>window.onload=()=>window.print()<\/script></body></html>`;
-  const w=window.open('','_blank');w.document.write(html);w.document.close();
+  const bloques = [{ tipo:'tabla', cabecera: ['Resumen', 'Valor', 'Fila'], derecha: [false, true, false],
+    filas: analisisResumen().flatMap(r => r.tarjetas).map(t => [t.etiqueta, t.valor, t.detalle || '']) }];
+  if (analisisVeTabla()) {
+    const tv = analisisTablaVisible();
+    const fmt = (v, i) => i === 0 ? v : (v === null || v === undefined ? '—' : analisisValorFmt(tv.metricasCol[i], v));
+    if (tv.titulo) bloques.push({ tipo:'texto', texto: tv.titulo });
+    bloques.push({ tipo:'tabla', cabecera: tv.cabecera, derecha: tv.cabecera.map((_, i) => i > 0),
+      filas: tv.filas.map(f => f.map(fmt)), total: tv.totales.map(fmt) });
+  }
+  const img = analisisImagenGrafico('image/jpeg');
+  if (img) bloques.push({ tipo:'imagen', ...img });
+  descargarPDF({ titulo: analisisTituloExport(),
+    subtitulo: `${pdfFechaHoy()} · ${formatoES(analisisLastResult.filas.length)} filas · solo festejos vistos y puntuados`, bloques }, analisisNombreArchivo());
 }
 
 function exportarAnalisisWord() {
   if (!analisisLastResult) { showToast('Genera el análisis primero'); return; }
-  const { filas, dim1def, dim2def, metDefs } = analisisLastResult;
-  const ths = [`<th>${dim1def.label}</th>`, ...(dim2def?[`<th>${dim2def.label}</th>`]:[]), ...metDefs.map(m=>`<th>${m.label}</th>`)].join('');
-  const trs = filas.map(f=>`<tr><td>${f._dim1||'—'}</td>${dim2def?`<td>${f._dim2||'—'}</td>`:''}${metDefs.map(m=>`<td>${fmt2(f[m.id])}</td>`).join('')}</tr>`).join('');
-  const totalCells = [`<td><strong>TOTAL (${filas.length})</strong></td>`, ...(dim2def?['<td></td>']:[]),
-    ...metDefs.map(m=>`<td><strong>${fmt2(filas.reduce((a,f)=>a+(parseFloat(f[m.id])||0),0))}</strong></td>`)].join('');
-  const tabla = `<table><thead><tr>${ths}</tr></thead><tbody>${trs}<tr>${totalCells}</tr></tbody></table>`;
-  exportarWordDesdeHTML(`Análisis — ${dim1def.label}${dim2def?' × '+dim2def.label:''}`, tabla, `Analisis_${dim1def.label.replace(/[^\w]/g,'')}`);
+  const img = analisisImagenGrafico();
+  const imagenes = img ? [{ nombre:'grafico.png', dataUrl: img.dataUrl }] : [];
+  exportarWordDesdeHTML(analisisTituloExport(), analisisHtmlExport(img ? 'file:///C:/tauromaquia/grafico.png' : null), analisisNombreArchivo(), imagenes);
 }
 
 </script>
